@@ -1,0 +1,75 @@
+# Setup
+
+- create database uni_fullstack_template_db
+- npm install
+- npm run dev
+
+# Deployment
+
+- set DATABASE_URL as environment variable
+- set SYNC to TRUE as environment variable in order to sync and seed database
+- set NODE_VERSION to 19.8.1
+
+- build command 
+  - npm install && npm run build
+- start command 
+  - npm run start 
+
+  
+### QUICK NOTES
+Check out Insta and FB for blueprint ideas.  
+Safety/security (age verification, backround checks or "Dungeon Masters"?)
+Chat bot site wide
+
+### D&D WIREFRAME
+
+### Home Page
+**Header**: Logo, navigation (Home, Search, Login/Signup, About, etc.)
+**Search Bar**: Input for player search, with location filter
+**Featured Section**: Display popular players or groups
+**Buttons**: Login and Signup for non-logged-in users
+???**Chat bot**: Site wide???
+**Footer**: Links to socials, terms and privacy policy, contact?
+****
+
+### Login/Signup Pages
+**Login Form**: Email/username, password function, very secure two-step verification
+**Signup Form**: Username, email, password, bio/location, age, so many preferences to promote good connections
+**Links**: Social media, terms, privacy policy, contact?
+****
+
+### Profile Page
+**Avatar/Username**: Top section with user’s image/avatar and name
+**Details**: Location, bio, game/group/player preferences, exp level
+**Rating**: Score from other users, ratings can be creative as well as an average
+**Comments**: List with comment function (How do I censor hate speech, but allow adult languange so users can chirp)
+**Actions**: “Comment” and “Message” buttons
+???**Friends List**: What is better than this???
+****
+
+### Search Page
+**Results**: Player cards with name, location, bio...
+**Filters**: Location, rating, experience level.
+**Sort**: Filter by rating, location(distance)...
+**PageNav**: Navigation options:...
+****
+
+### Commenting Page
+**Player**: Dropdown to select player
+**Rating**: Average and a creative
+**Comment**: Spot for ???comments/reviews???Which verbiage do I want???
+**Submit**: Button to submit comment
+****
+
+### My Comments Page
+**Comments List**: User’s comments with player name, rating, comment
+**Actions**: Edit and delete buttons for comments
+****
+
+### Messaging Page
+**Inbox**: List of conversations with latest message
+**Filter**: Message history for selected conversation
+**Input**: Field/pop-up to send new messages
+****
+
+### Mas porfa whey!!
