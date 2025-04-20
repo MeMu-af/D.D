@@ -1,15 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* @theme inline {
-    --fonts: {
-      heading: 'Arial, sans-serif'
-    },
-    --breakpoints: {
-      sm: '640px',
-      md: '768px'
-    }
-  } */
+@theme inline {
+  /* Custom theme variables can be added here */
+}
 
 @layer base {
   :root {

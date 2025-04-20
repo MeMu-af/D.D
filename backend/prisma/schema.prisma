@@ -11,6 +11,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  // output   = "../generated/prisma"
 }
 
 model User {
@@ -19,16 +20,16 @@ model User {
   email           String   @unique
   password        String
   bio             String?
-  location        String?
+  location        String
   gamePreferences String?
   experienceLevel String?
-  rating          Float?
   profilePicture  String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   reviews         Review[] @relation("Reviewer")
   reviewed        Review[] @relation("Reviewed")
-  comments        Comment[] @relation("Author")
+  posts           Post[]
+  comments        Comment[]
 }
 
 model Review {
@@ -41,16 +42,28 @@ model Review {
   updatedAt   DateTime @updatedAt
   reviewer    User     @relation("Reviewer", fields: [reviewerId], references: [id])
   reviewed    User     @relation("Reviewed", fields: [reviewedId], references: [id])
+}
+
+model Post {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  media       String?  // URL to uploaded photo/video
+  authorId    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      User     @relation(fields: [authorId], references: [id])
   comments    Comment[]
 }
 
 model Comment {
   id          Int      @id @default(autoincrement())
-  reviewId    Int
-  authorId    Int
   content     String
+  media       String?  // URL to uploaded photo/video
+  authorId    Int
+  postId      Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  review      Review   @relation(fields: [reviewId], references: [id])
-  author      User     @relation("Author", fields: [authorId], references: [id])
+  author      User     @relation(fields: [authorId], references: [id])
+  post        Post     @relation(fields: [postId], references: [id])
 }
