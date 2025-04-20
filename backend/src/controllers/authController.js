@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const prisma = new PrismaClient();
 
 exports.register = async (req, res) => {
-  const { username, email, password, location } = req.body;
+  const { username, email, password, location, latitude, longitude, bio, gamePreferences, experienceLevel, profilePicture } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
@@ -13,6 +13,12 @@ exports.register = async (req, res) => {
         email,
         password: hashedPassword,
         location,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+        bio,
+        gamePreferences,
+        experienceLevel,
+        profilePicture,
       },
     });
     res.status(201).json({ message: 'User created', userId: user.id });

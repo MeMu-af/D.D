@@ -10,8 +10,11 @@ function Login() {
   const handleLogin = async () => {
     try {
       const response = await axios.post('/api/auth/login', { email, password });
-      console.log('Login successful:', response.data.token);
-      // Store token in localStorage or state
+      const token = response.data.token;
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('Login successful');
+      // Redirect or update state
     } catch (error) {
       console.error('Login error:', error);
     }
@@ -20,18 +23,18 @@ function Login() {
   return (
     <div className="container mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">Login</h2>
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-md mx-auto">
         <Input
           type="email"
           placeholder="Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
         />
         <Input
           type="password"
           placeholder="Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
         />
         <Button onClick={handleLogin}>Login</Button>
       </div>

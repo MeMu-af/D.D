@@ -1,21 +1,19 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import Profile from './pages/Profile';
-import Forum from './pages/Forum';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Register from './components/Register';
+import Forum from './components/Forum';
+import Login from './components/Login';
+import NearbyPlayers from './components/NearbyPlayers';
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/profile/:id" element={<Profile />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forum" element={<Forum />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/nearby" element={<NearbyPlayers />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
