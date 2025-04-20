@@ -5,7 +5,5 @@ const authMiddleware = require('../middleware/auth');
 const upload = require('../middleware/multerConfig');
 
 router.post('/', authMiddleware, upload.single('media'), postController.createPost);
-router.get('/', postController.getPosts);
-router.post('/:postId/comments', authMiddleware, upload.single('media'), postController.createComment);
 
 module.exports = router;

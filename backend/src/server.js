@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const postRoutes = require('./routes/postRoutes');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
@@ -11,7 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const uploadsPath = path.resolve('uploads');
+if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
+app.use('/uploads', express.static(uploadsPath));
 
 // Routes
 app.use('/api/users', userRoutes);
