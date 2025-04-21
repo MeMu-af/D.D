@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/card';
+import { Button } from '@/components/button';
+import { Input } from '@/components/input';
 import { Textarea } from '@/components/ui/textarea';
 
 function Forum() {
