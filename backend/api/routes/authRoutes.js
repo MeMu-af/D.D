@@ -1,10 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const limiter = require('../middleware/rateLimiter');
-
-// Apply rate limiting to auth routes
-router.use(limiter);
 
 // Basic auth routes
 router.post('/register', authController.register);

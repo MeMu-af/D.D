@@ -15,20 +15,22 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  username      String    @unique
-  password      String
-  bio           String?
-  location      String?
-  age           Int?
-  experience    String?   // e.g., "Beginner", "Intermediate", "Expert"
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  ratings       Rating[]
-  comments      Comment[]
-  messages      Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String    @unique
+  password          String
+  bio               String?
+  latitude          Float?
+  longitude         Float?
+  lastLocationUpdate DateTime?
+  age               Int?
+  experience        String?   // e.g., "Beginner", "Intermediate", "Expert"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  ratings           Rating[]
+  comments          Comment[]
+  messages          Message[] @relation("SentMessages")
+  receivedMessages  Message[] @relation("ReceivedMessages")
 }
 
 model Rating {

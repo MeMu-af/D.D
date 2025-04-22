@@ -4,35 +4,30 @@ const cors = require('cors');
 const userRoutes = require('./api/routes/userRoutes');
 const authRoutes = require('./api/routes/authRoutes');
 const postRoutes = require('./api/routes/postRoutes');
-const errorHandler = require('./api/middleware/errorHandler');
-const logger = require('./api/middleware/logger');
-const limiter = require('./api/middleware/rateLimiter');
-const securityHeaders = require('./api/middleware/securityHeaders');
+const errorHandler = require('./api/middleware/errorHandlerMiddleware');
+const sanitizeRequest = require('./api/middleware/sanitizationMiddleware');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 
-// Security middleware
-app.use(securityHeaders);
-
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.CORS_ORIGIN 
+    : 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400 // Cache preflight requests for 24 hours
 }));
 
 // Basic middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
-app.use(limiter);
-
-// Request logging
-app.use(logger);
+// Sanitize all requests
+app.use(sanitizeRequest);
 
 // Serve static files from uploads
 const uploadsPath = path.resolve('uploads');

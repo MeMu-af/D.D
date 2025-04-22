@@ -1,5 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const userService = require('../services/userService');
+const authService = require('../services/authService');
+const locationService = require('../services/locationService');
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Earth's radius in km
@@ -35,77 +38,42 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-exports.getUserById = async (req, res) => {
-  const { id } = req.params;
+exports.getUserProfile = async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({ 
-      where: { id },
-      include: {
-        ratings: true,
-        comments: true,
-        messages: true,
-        receivedMessages: true
-      }
-    });
-    if (user) {
-      // Remove sensitive data
-      const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } else {
-      res.status(404).json({ error: 'User not found' });
+    const user = await userService.getUserById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
+    res.json(user);
   } catch (error) {
-    console.error('Error getting user:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    res.status(500).json({ error: 'Error fetching user profile', details: error.message });
   }
 };
 
-exports.updateUser = async (req, res) => {
-  const { id } = req.params;
-  if (id !== req.user.userId) {
-    return res.status(403).json({ error: 'You can only update your own profile' });
-  }
-  const { username, email, bio, location, age, experience } = req.body;
+exports.updateUserProfile = async (req, res) => {
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        username,
-        email,
-        bio,
-        location,
-        age,
-        experience,
-      },
-    });
-    // Remove sensitive data
-    const { password, ...userWithoutPassword } = updatedUser;
-    res.json(userWithoutPassword);
+    const user = await userService.updateUser(req.user.userId, req.body);
+    res.json(user);
   } catch (error) {
-    console.error('Error updating user:', error);
-    if (error.code === 'P2002') {
-      return res.status(400).json({ 
-        error: 'Update failed',
-        details: 'Username or email already exists'
-      });
-    }
-    res.status(500).json({ error: 'Error updating user', details: error.message });
+    res.status(500).json({ error: 'Error updating user profile', details: error.message });
   }
 };
 
 exports.deleteUser = async (req, res) => {
-  const { id } = req.params;
-  if (id !== req.user.userId) {
-    return res.status(403).json({ error: 'You can only delete your own account' });
-  }
   try {
-    await prisma.user.delete({
-      where: { id }
-    });
-    res.json({ message: 'User deleted successfully' });
+    await userService.deleteUser(req.user.userId);
+    res.status(204).send();
   } catch (error) {
-    console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Error deleting user', details: error.message });
+  }
+};
+
+exports.getUserPosts = async (req, res) => {
+  try {
+    const posts = await userService.getUserPosts(req.params.userId);
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching user posts', details: error.message });
   }
 };
 
@@ -135,40 +103,45 @@ exports.updateProfilePicture = async (req, res) => {
 };
 
 exports.getNearbyUsers = async (req, res) => {
-  const { lat, lon, radius } = req.query; // radius in km
-  if (!lat || !lon || !radius) {
+  const { lat, lon, radius } = req.query;
+  if (!lat || !lon) {
     return res.status(400).json({ error: 'Missing required parameters' });
   }
-  const latitude = parseFloat(lat);
-  const longitude = parseFloat(lon);
-  const rad = parseFloat(radius);
-  try {
-    const users = await prisma.user.findMany({
-      where: {
-        location: { not: null }
-      },
-      select: {
-        id: true,
-        username: true,
-        location: true,
-        age: true,
-        experience: true,
-        bio: true,
-        profilePicture: true
-      },
-    });
 
-    // Filter users by distance
-    const nearbyUsers = users.filter(user => {
-      if (!user.location) return false;
-      const [userLat, userLon] = user.location.split(',').map(Number);
-      const distance = calculateDistance(latitude, longitude, userLat, userLon);
-      return distance <= rad;
-    });
+  try {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lon);
+    const radiusKm = parseFloat(radius) || 10; // Default 10km radius
+
+    const nearbyUsers = await locationService.findNearbyUsers(
+      req.user.userId,
+      latitude,
+      longitude,
+      radiusKm
+    );
 
     res.json(nearbyUsers);
   } catch (error) {
     console.error('Error fetching nearby users:', error);
     res.status(500).json({ error: 'Error fetching nearby users', details: error.message });
+  }
+};
+
+exports.updateUserLocation = async (req, res) => {
+  const { latitude, longitude } = req.body;
+  if (!latitude || !longitude) {
+    return res.status(400).json({ error: 'Missing required parameters' });
+  }
+
+  try {
+    const updatedUser = await locationService.updateUserLocation(
+      req.user.userId,
+      parseFloat(latitude),
+      parseFloat(longitude)
+    );
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user location:', error);
+    res.status(500).json({ error: 'Error updating user location', details: error.message });
   }
 };

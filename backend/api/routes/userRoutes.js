@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const authMiddleware = require('../middleware/auth');
-const upload = require('../middleware/multerConfig');
+const authMiddleware = require('../middleware/authMiddleware');
+const upload = require('../middleware/multerMiddleware');
 
 // Public routes
 router.get('/', userController.getAllUsers);
@@ -18,5 +18,6 @@ router.post('/:id/profile-picture', upload.single('profilePicture'), userControl
 
 // Location-based routes
 router.get('/nearby', userController.getNearbyUsers);
+router.post('/location', userController.updateUserLocation);
 
 module.exports = router;

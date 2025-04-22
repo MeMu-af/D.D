@@ -3,74 +3,33 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = new PrismaClient();
+const authService = require('../services/authService');
 
 // Helper function to generate verification token
 const generateToken = () => crypto.randomBytes(32).toString('hex');
 
 exports.register = async (req, res) => {
-  const { username, email, password, location, age, experience, bio } = req.body;
-  
+  const { username, email, password } = req.body;
   try {
-    // Validate required fields
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = generateToken();
-    
-    const user = await prisma.user.create({
-      data: {
-        username,
-        email,
-        password: hashedPassword,
-        location,
-        age,
-        experience,
-        bio,
-        verificationToken,
-        isVerified: false
-      },
-    });
-
-    // TODO: Send verification email
-    res.status(201).json({ 
-      message: 'User created', 
-      userId: user.id,
-      note: 'Please verify your email address'
-    });
+    const user = await authService.registerUser(username, email, password);
+    res.status(201).json(user);
   } catch (error) {
-    console.error('Registration error:', error);
-    if (error.code === 'P2002') {
-      // Unique constraint violation
-      return res.status(400).json({ 
-        error: 'User already exists',
-        details: error.meta?.target?.join(', ') || 'username or email'
-      });
+    if (error.message.includes('already exists')) {
+      return res.status(400).json({ error: 'Username or email already exists' });
     }
-    res.status(500).json({ error: 'Error creating user', details: error.message });
+    res.status(500).json({ error: 'Error registering user', details: error.message });
   }
 };
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) return res.status(401).json({ error: 'Invalid credentials' });
-    
-    if (!user.isVerified) {
-      return res.status(403).json({ 
-        error: 'Email not verified',
-        message: 'Please verify your email address before logging in'
-      });
-    }
-    
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    const result = await authService.loginUser(email, password);
+    res.json(result);
   } catch (error) {
+    if (error.message === 'User not found' || error.message === 'Invalid password') {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
     res.status(500).json({ error: 'Error logging in', details: error.message });
   }
 };
@@ -188,5 +147,19 @@ exports.resendVerification = async (req, res) => {
     res.json({ message: 'Verification email resent' });
   } catch (error) {
     res.status(500).json({ error: 'Error resending verification', details: error.message });
+  }
+};
+
+exports.verify = async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  try {
+    const user = await authService.verifyToken(token);
+    res.json(user);
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
   }
 };
