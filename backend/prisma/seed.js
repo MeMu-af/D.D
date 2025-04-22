@@ -1,22 +1,24 @@
 const { faker } = require('@faker-js/faker');
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
 async function main() {
   // Clear existing data
-  await prisma.user.deleteMany();
-  await prisma.review.deleteMany();
-  await prisma.post.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.rating.deleteMany();
   await prisma.comment.deleteMany();
+  await prisma.user.deleteMany();
 
   // Create 10 test users
   for (let i = 0; i < 10; i++) {
+    const hashedPassword = await bcrypt.hash('password123', 10);
     const user = await prisma.user.create({
       data: {
         email: faker.internet.email(),
         username: faker.internet.userName(),
-        password: faker.internet.password(),
+        password: hashedPassword,
         bio: faker.lorem.sentence(),
         location: faker.location.city(),
         age: faker.number.int({ min: 18, max: 60 }),

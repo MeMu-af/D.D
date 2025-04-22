@@ -15,51 +15,122 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        location: true,
+        age: true,
+        experience: true,
+        profilePicture: true,
+        createdAt: true
+      }
+    });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error getting users:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
 exports.getUserById = async (req, res) => {
   const { id } = req.params;
   try {
-    const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+    const user = await prisma.user.findUnique({ 
+      where: { id },
+      include: {
+        ratings: true,
+        comments: true,
+        messages: true,
+        receivedMessages: true
+      }
+    });
     if (user) {
-      res.json(user);
+      // Remove sensitive data
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } else {
       res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error getting user:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
-  if (parseInt(id) !== req.user.userId) {
+  if (id !== req.user.userId) {
     return res.status(403).json({ error: 'You can only update your own profile' });
   }
-  const { username, email, bio, location, latitude, longitude, gamePreferences, experienceLevel, profilePicture } = req.body;
+  const { username, email, bio, location, age, experience } = req.body;
   try {
     const updatedUser = await prisma.user.update({
-      where: { id: parseInt(id) },
+      where: { id },
       data: {
         username,
         email,
         bio,
         location,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
-        gamePreferences,
-        experienceLevel,
-        profilePicture,
+        age,
+        experience,
       },
     });
-    res.json(updatedUser);
+    // Remove sensitive data
+    const { password, ...userWithoutPassword } = updatedUser;
+    res.json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: 'Error updating user' });
+    console.error('Error updating user:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ 
+        error: 'Update failed',
+        details: 'Username or email already exists'
+      });
+    }
+    res.status(500).json({ error: 'Error updating user', details: error.message });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+  if (id !== req.user.userId) {
+    return res.status(403).json({ error: 'You can only delete your own account' });
+  }
+  try {
+    await prisma.user.delete({
+      where: { id }
+    });
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Error deleting user', details: error.message });
+  }
+};
+
+exports.updateProfilePicture = async (req, res) => {
+  const { id } = req.params;
+  if (id !== req.user.userId) {
+    return res.status(403).json({ error: 'You can only update your own profile picture' });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        profilePicture: `/uploads/${req.file.filename}`
+      }
+    });
+    res.json({ 
+      message: 'Profile picture updated successfully',
+      profilePicture: updatedUser.profilePicture
+    });
+  } catch (error) {
+    console.error('Error updating profile picture:', error);
+    res.status(500).json({ error: 'Error updating profile picture', details: error.message });
   }
 };
 
@@ -74,25 +145,30 @@ exports.getNearbyUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       where: {
-        latitude: { not: null },
-        longitude: { not: null },
+        location: { not: null }
       },
       select: {
         id: true,
         username: true,
         location: true,
-        latitude: true,
-        longitude: true,
-        gamePreferences: true,
-        experienceLevel: true,
+        age: true,
+        experience: true,
+        bio: true,
+        profilePicture: true
       },
     });
+
+    // Filter users by distance
     const nearbyUsers = users.filter(user => {
-      const distance = calculateDistance(latitude, longitude, user.latitude, user.longitude);
+      if (!user.location) return false;
+      const [userLat, userLon] = user.location.split(',').map(Number);
+      const distance = calculateDistance(latitude, longitude, userLat, userLon);
       return distance <= rad;
     });
+
     res.json(nearbyUsers);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching nearby users' });
+    console.error('Error fetching nearby users:', error);
+    res.status(500).json({ error: 'Error fetching nearby users', details: error.message });
   }
 };
