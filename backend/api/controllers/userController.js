@@ -2,18 +2,25 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const userService = require('../services/userService');
 const authService = require('../services/authService');
-const locationService = require('../services/locationService');
+
+// Location utility functions
+const EARTH_RADIUS_KM = 6371;
+
+const toRadians = (degrees) => {
+    return degrees * (Math.PI / 180);
+};
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return EARTH_RADIUS_KM * c;
 };
 
 exports.getAllUsers = async (req, res) => {
@@ -103,45 +110,79 @@ exports.updateProfilePicture = async (req, res) => {
 };
 
 exports.getNearbyUsers = async (req, res) => {
-  const { lat, lon, radius } = req.query;
-  if (!lat || !lon) {
-    return res.status(400).json({ error: 'Missing required parameters' });
-  }
+    const { lat, lon, radius } = req.query;
+    if (!lat || !lon) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+    }
 
-  try {
-    const latitude = parseFloat(lat);
-    const longitude = parseFloat(lon);
-    const radiusKm = parseFloat(radius) || 10; // Default 10km radius
+    try {
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lon);
+        const radiusKm = parseFloat(radius) || 10; // Default 10km radius
 
-    const nearbyUsers = await locationService.findNearbyUsers(
-      req.user.userId,
-      latitude,
-      longitude,
-      radiusKm
-    );
+        // Get all users with their locations
+        const users = await prisma.user.findMany({
+            where: {
+                id: { not: req.user.userId },
+                latitude: { not: null },
+                longitude: { not: null }
+            },
+            select: {
+                id: true,
+                username: true,
+                latitude: true,
+                longitude: true,
+                profilePicture: true
+            }
+        });
 
-    res.json(nearbyUsers);
-  } catch (error) {
-    console.error('Error fetching nearby users:', error);
-    res.status(500).json({ error: 'Error fetching nearby users', details: error.message });
-  }
+        // Filter users within the specified radius
+        const nearbyUsers = users.filter(user => {
+            const distance = calculateDistance(
+                latitude,
+                longitude,
+                user.latitude,
+                user.longitude
+            );
+            return distance <= radiusKm;
+        });
+
+        // Add distance to each user
+        const usersWithDistance = nearbyUsers.map(user => ({
+            ...user,
+            distance: calculateDistance(
+                latitude,
+                longitude,
+                user.latitude,
+                user.longitude
+            )
+        }));
+
+        res.json(usersWithDistance);
+    } catch (error) {
+        console.error('Error fetching nearby users:', error);
+        res.status(500).json({ error: 'Error fetching nearby users', details: error.message });
+    }
 };
 
 exports.updateUserLocation = async (req, res) => {
-  const { latitude, longitude } = req.body;
-  if (!latitude || !longitude) {
-    return res.status(400).json({ error: 'Missing required parameters' });
-  }
+    const { latitude, longitude } = req.body;
+    if (!latitude || !longitude) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+    }
 
-  try {
-    const updatedUser = await locationService.updateUserLocation(
-      req.user.userId,
-      parseFloat(latitude),
-      parseFloat(longitude)
-    );
-    res.json(updatedUser);
-  } catch (error) {
-    console.error('Error updating user location:', error);
-    res.status(500).json({ error: 'Error updating user location', details: error.message });
-  }
+    try {
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.userId },
+            data: {
+                latitude,
+                longitude,
+                lastLocationUpdate: new Date()
+            }
+        });
+        res.json(updatedUser);
+    } catch (error) {
+        console.error('Error updating user location:', error);
+        res.status(500).json({ error: 'Error updating user location', details: error.message });
+    }
 };
