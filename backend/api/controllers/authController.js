@@ -9,9 +9,16 @@ const authService = require('../services/authService');
 const generateToken = () => crypto.randomBytes(32).toString('hex');
 
 exports.register = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, location, latitude, longitude } = req.body;
   try {
-    const user = await authService.registerUser(username, email, password);
+    const locationData = location && latitude && longitude ? {
+      location,
+      latitude,
+      longitude,
+      lastLocationUpdate: new Date()
+    } : {};
+    
+    const user = await authService.registerUser(username, email, password, locationData);
     res.status(201).json(user);
   } catch (error) {
     if (error.message.includes('already exists')) {

@@ -17,10 +17,13 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         email: faker.internet.email(),
-        username: faker.internet.userName(),
+        username: faker.internet.username(),
         password: hashedPassword,
         bio: faker.lorem.sentence(),
         location: faker.location.city(),
+        latitude: faker.location.latitude(),
+        longitude: faker.location.longitude(),
+        lastLocationUpdate: faker.date.recent(),
         age: faker.number.int({ min: 18, max: 60 }),
         experience: faker.helpers.arrayElement(['Beginner', 'Intermediate', 'Expert']),
       },

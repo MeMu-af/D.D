@@ -20,6 +20,7 @@ model User {
   username          String    @unique
   password          String
   bio               String?
+  location          String?   // City/place name for user-friendly display
   latitude          Float?
   longitude         Float?
   lastLocationUpdate DateTime?

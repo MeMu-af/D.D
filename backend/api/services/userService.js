@@ -10,6 +10,11 @@ const getUserById = async (userId) => {
       email: true,
       profilePicture: true,
       bio: true,
+      location: true,
+      latitude: true,
+      longitude: true,
+      age: true,
+      experience: true,
       createdAt: true
     }
   });
@@ -25,6 +30,11 @@ const updateUser = async (userId, updateData) => {
       email: true,
       profilePicture: true,
       bio: true,
+      location: true,
+      latitude: true,
+      longitude: true,
+      age: true,
+      experience: true,
       createdAt: true
     }
   });

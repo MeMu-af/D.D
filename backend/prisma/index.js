@@ -1,3 +1,14 @@
 const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+
+// Prevent multiple instances of Prisma Client in development
+const prismaClientSingleton = () => {
+  return new PrismaClient();
+};
+
+const prisma = global.prisma ?? prismaClientSingleton();
+
+if (process.env.NODE_ENV !== 'production') {
+  global.prisma = prisma;
+}
+
 module.exports = prisma;

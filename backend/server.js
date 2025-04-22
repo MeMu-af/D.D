@@ -8,6 +8,7 @@ const errorHandler = require('./api/middleware/errorHandlerMiddleware');
 const sanitizeRequest = require('./api/middleware/sanitizationMiddleware');
 const path = require('path');
 const fs = require('fs');
+const prisma = require('./prisma');
 
 const app = express();
 
@@ -59,7 +60,24 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    prisma.$disconnect()
+      .then(() => {
+        console.log('Prisma client disconnected');
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error('Error during Prisma disconnection:', err);
+        process.exit(1);
+      });
+  });
 });

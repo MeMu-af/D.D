@@ -166,15 +166,21 @@ exports.getNearbyUsers = async (req, res) => {
 };
 
 exports.updateUserLocation = async (req, res) => {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, location } = req.body;
+    
+    // Validate required fields
+    if (!location) {
+        return res.status(400).json({ error: 'Location name is required' });
+    }
     if (!latitude || !longitude) {
-        return res.status(400).json({ error: 'Missing required parameters' });
+        return res.status(400).json({ error: 'Both latitude and longitude are required' });
     }
 
     try {
         const updatedUser = await prisma.user.update({
             where: { id: req.user.userId },
             data: {
+                location,
                 latitude,
                 longitude,
                 lastLocationUpdate: new Date()
