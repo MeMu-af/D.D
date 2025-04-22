@@ -3,7 +3,6 @@ import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/card';
 import { Button } from '@/components/button';
 import { Input } from '@/components/input';
-import { Textarea } from '@/components/ui/textarea';
 
 function Forum() {
   const [posts, setPosts] = useState([]);
