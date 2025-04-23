@@ -26,6 +26,10 @@ async function main() {
         lastLocationUpdate: faker.date.recent(),
         age: faker.number.int({ min: 18, max: 60 }),
         experience: faker.helpers.arrayElement(['Beginner', 'Intermediate', 'Expert']),
+        profilePicture: faker.helpers.arrayElement([
+          null,
+          '/uploads/images/default-avatar.jpg'
+        ]),
       },
     });
 
@@ -46,6 +50,22 @@ async function main() {
         data: {
           content: faker.lorem.paragraph(),
           userId: user.id,
+        },
+      });
+    }
+
+    // Create some posts for each user
+    for (let j = 0; j < 2; j++) {
+      await prisma.post.create({
+        data: {
+          title: faker.lorem.sentence(),
+          content: faker.lorem.paragraph(),
+          media: faker.helpers.arrayElement([
+            null,
+            '/uploads/images/post-image.jpg',
+            '/uploads/videos/post-video.mp4'
+          ]),
+          authorId: user.id,
         },
       });
     }

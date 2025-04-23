@@ -1,11 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const userRoutes = require('./api/routes/userRoutes');
-const authRoutes = require('./api/routes/authRoutes');
-const postRoutes = require('./api/routes/postRoutes');
-const errorHandler = require('./api/middleware/errorHandlerMiddleware');
-const sanitizeRequest = require('./api/middleware/sanitizationMiddleware');
+const apiRouter = require('./api');
+const errorHandler = require('./api/shared/errorHandler');
+const sanitizeRequest = require('./api/shared/sanitization');
 const path = require('path');
 const fs = require('fs');
 const prisma = require('./prisma');
@@ -32,8 +30,24 @@ app.use(sanitizeRequest);
 
 // Serve static files from uploads
 const uploadsPath = path.resolve('uploads');
-if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
-app.use('/uploads', express.static(uploadsPath));
+const imagesPath = path.join(uploadsPath, 'images');
+const videosPath = path.join(uploadsPath, 'videos');
+
+// Create directories if they don't exist
+[uploadsPath, imagesPath, videosPath].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
+// Serve static files with proper caching and security headers
+app.use('/uploads', express.static(uploadsPath, {
+  maxAge: '1h',
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
+}));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -43,41 +57,37 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes
-app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/posts', postRoutes);
+// Mount API routes
+app.use('/api', (req, res, next) => {
+  console.log('API request received:', {
+    method: req.method,
+    path: req.path,
+    headers: {
+      authorization: req.headers.authorization ? 'Bearer [REDACTED]' : undefined,
+      'content-type': req.headers['content-type']
+    }
+  });
+  next();
+});
 
-// Error handling middleware
+app.use('/api', apiRouter);
+
+// Error handling
 app.use(errorHandler);
 
-// Handle 404 routes
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Route not found'
-  });
-});
-
+// Start server
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    prisma.$disconnect()
-      .then(() => {
-        console.log('Prisma client disconnected');
-        process.exit(0);
-      })
-      .catch((err) => {
-        console.error('Error during Prisma disconnection:', err);
-        process.exit(1);
-      });
-  });
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+  // Don't exit the process in production, just log the error
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
 });
+
+module.exports = app;

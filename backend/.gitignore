@@ -21,19 +21,36 @@ pids
 *.seed
 *.pid.lock
 
-# Directory for uploaded files
-uploads/*
+# Upload directories
+uploads/images/*
+uploads/videos/*
+!uploads/images/.gitkeep
+!uploads/videos/.gitkeep
 
 # IDE
 .idea
 .vscode
 *.swp
 *.swo
+*.swn
+*.bak
 
 # Testing
 coverage
 .nyc_output
+test-results
+jest-results.json
+
+# Build output
+dist
+build
+.next
+out
 
 # Misc
 .DS_Store
 Thumbs.db
+*.pem
+*.key
+*.cert
+*.crt

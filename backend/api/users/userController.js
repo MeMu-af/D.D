@@ -1,7 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-const userService = require('../services/userService');
-const authService = require('../services/authService');
+const prisma = require('../../prisma');
+const userService = require('./userService');
+const authService = require('../auth/authService');
 
 // Location utility functions
 const EARTH_RADIUS_KM = 6371;
@@ -47,7 +46,7 @@ exports.getAllUsers = async (req, res) => {
 
 exports.getUserProfile = async (req, res) => {
   try {
-    const user = await userService.getUserById(req.params.userId);
+    const user = await userService.getUserById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -57,12 +56,75 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-exports.updateUserProfile = async (req, res) => {
+exports.updateUserProfile = async (req, res, next) => {
   try {
-    const user = await userService.updateUser(req.user.userId, req.body);
-    res.json(user);
+    console.log('Update profile request received:', {
+      userId: req.params.id,
+      authenticatedUserId: req.user?.userId,
+      updateData: req.body,
+      headers: {
+        authorization: req.headers.authorization ? 'Bearer [REDACTED]' : undefined,
+        'content-type': req.headers['content-type']
+      }
+    });
+
+    if (!req.user) {
+      console.error('No authenticated user found');
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (req.params.id !== req.user.userId) {
+      console.error('User ID mismatch:', {
+        requestedUserId: req.params.id,
+        authenticatedUserId: req.user.userId
+      });
+      return res.status(403).json({ error: 'Cannot update another user\'s profile' });
+    }
+
+    // Verify user exists before update
+    const existingUser = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { id: true }
+    });
+
+    if (!existingUser) {
+      console.error('User not found:', req.params.id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('Updating user profile:', {
+      userId: req.params.id,
+      updateData: req.body
+    });
+
+    const updatedUser = await userService.updateUser(req.params.id, req.body);
+    
+    console.log('User profile updated successfully:', {
+      userId: updatedUser.id,
+      updatedFields: Object.keys(req.body)
+    });
+
+    return res.json(updatedUser);
   } catch (error) {
-    res.status(500).json({ error: 'Error updating user profile', details: error.message });
+    console.error('Error updating user profile:', {
+      error: {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      },
+      userId: req.params.id
+    });
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (error.message === 'No valid fields to update') {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    next(error);
   }
 };
 
@@ -93,10 +155,14 @@ exports.updateProfilePicture = async (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
   try {
+    // Get the subdirectory (images or videos) from the file path
+    const subdir = req.file.mimetype.startsWith('image/') ? 'images' : 'videos';
+    const profilePicturePath = `/uploads/${subdir}/${req.file.filename}`;
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
-        profilePicture: `/uploads/${req.file.filename}`
+        profilePicture: profilePicturePath
       }
     });
     res.json({ 

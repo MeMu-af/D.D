@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = new PrismaClient();
-const authService = require('../services/authService');
+const authService = require('./authService');
 
 // Helper function to generate verification token
 const generateToken = () => crypto.randomBytes(32).toString('hex');

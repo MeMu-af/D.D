@@ -19,9 +19,14 @@ const MAX_FILE_AGE = 24; // hours
 
 // Create uploads directory if it doesn't exist
 const uploadDir = path.resolve("uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+const imagesDir = path.join(uploadDir, "images");
+const videosDir = path.join(uploadDir, "videos");
+
+[imagesDir, videosDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 /**
  * Allowed MIME types and their corresponding extensions
@@ -42,21 +47,23 @@ const allowedMimeTypes = {
  */
 const cleanupOldFiles = () => {
   try {
-    const files = fs.readdirSync(uploadDir);
-    const now = Date.now();
-    
-    files.forEach(file => {
-      const filePath = path.join(uploadDir, file);
-      try {
-        const stats = fs.statSync(filePath);
-        const fileAge = (now - stats.mtime.getTime()) / (1000 * 60 * 60);
-        
-        if (fileAge > MAX_FILE_AGE) {
-          fs.unlinkSync(filePath);
+    [imagesDir, videosDir].forEach(dir => {
+      const files = fs.readdirSync(dir);
+      const now = Date.now();
+      
+      files.forEach(file => {
+        const filePath = path.join(dir, file);
+        try {
+          const stats = fs.statSync(filePath);
+          const fileAge = (now - stats.mtime.getTime()) / (1000 * 60 * 60);
+          
+          if (fileAge > MAX_FILE_AGE) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (error) {
+          console.error(`Error processing file ${file}:`, error);
         }
-      } catch (error) {
-        console.error(`Error processing file ${file}:`, error);
-      }
+      });
     });
   } catch (error) {
     console.error('Error during cleanup:', error);
@@ -83,7 +90,8 @@ const sanitizeFilename = (filename) => {
  */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadDir);
+    const isImage = file.mimetype.startsWith('image/');
+    cb(null, isImage ? imagesDir : videosDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = crypto.randomBytes(16).toString('hex');

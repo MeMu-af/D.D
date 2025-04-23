@@ -15,23 +15,27 @@ datasource db {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  username          String    @unique
-  password          String
-  bio               String?
-  location          String?   // City/place name for user-friendly display
-  latitude          Float?
-  longitude         Float?
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  username           String    @unique
+  password           String
+  firstName          String?
+  lastName           String?
+  bio                String?
+  location           String? // City/place name for user-friendly display
+  latitude           Float?
+  longitude          Float?
   lastLocationUpdate DateTime?
-  age               Int?
-  experience        String?   // e.g., "Beginner", "Intermediate", "Expert"
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  ratings           Rating[]
-  comments          Comment[]
-  messages          Message[] @relation("SentMessages")
-  receivedMessages  Message[] @relation("ReceivedMessages")
+  age                Int?
+  experience         String? // e.g., "Beginner", "Intermediate", "Expert"
+  profilePicture     String? // URL to the profile picture
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  ratings            Rating[]
+  comments           Comment[]
+  messages           Message[] @relation("SentMessages")
+  receivedMessages   Message[] @relation("ReceivedMessages")
+  posts              Post[]
 }
 
 model Rating {
@@ -49,14 +53,28 @@ model Comment {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   userId    String
+  post      Post?    @relation(fields: [postId], references: [id])
+  postId    String?
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
-  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
-  senderId  String
-  receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  id         String   @id @default(cuid())
+  content    String
+  createdAt  DateTime @default(now())
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId   String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
   receiverId String
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  media     String? // URL to the media file (image or video)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  author    User      @relation(fields: [authorId], references: [id])
+  authorId  String
+  comments  Comment[]
 }

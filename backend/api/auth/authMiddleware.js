@@ -6,10 +6,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-
-// Cache Prisma client instance
-const prisma = new PrismaClient();
+const prisma = require('../../prisma');
 
 // Cache common error responses
 const errorResponses = {
@@ -56,15 +53,29 @@ const errorResponses = {
 const authMiddleware = (roles = []) => {
   return async (req, res, next) => {
     try {
+      console.log('Auth middleware processing request:', {
+        path: req.path,
+        method: req.method,
+        headers: {
+          authorization: req.headers.authorization ? 'Bearer [REDACTED]' : undefined
+        }
+      });
+
       const token = req.header('Authorization')?.replace('Bearer ', '');
       if (!token) {
+        console.error('No token provided');
         return res.status(401).json(errorResponses.noToken);
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Token decoded:', {
+        userId: decoded.userId,
+        exp: decoded.exp
+      });
       
       // Check if token is expired
       if (decoded.exp < Date.now() / 1000) {
+        console.error('Token expired');
         return res.status(401).json(errorResponses.tokenExpired);
       }
 
@@ -72,33 +83,32 @@ const authMiddleware = (roles = []) => {
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
         select: {
-          id: true,
-          isVerified: true,
-          role: true
+          id: true
         }
       });
 
       if (!user) {
+        console.error('User not found in database');
         return res.status(401).json(errorResponses.userNotFound);
-      }
-
-      if (!user.isVerified) {
-        return res.status(403).json(errorResponses.emailNotVerified);
-      }
-
-      // Check role-based access
-      if (roles.length > 0 && !roles.includes(user.role)) {
-        return res.status(403).json(errorResponses.insufficientPermissions);
       }
 
       // Attach user info to request
       req.user = {
-        userId: user.id,
-        role: user.role
+        userId: user.id
       };
+      
+      console.log('Authentication successful:', {
+        userId: user.id
+      });
       
       next();
     } catch (error) {
+      console.error('Auth middleware error:', {
+        error: {
+          name: error.name,
+          message: error.message
+        }
+      });
       if (error.name === 'JsonWebTokenError') {
         return res.status(401).json(errorResponses.invalidToken);
       }
