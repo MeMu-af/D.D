@@ -36,6 +36,7 @@ model User {
   messages           Message[] @relation("SentMessages")
   receivedMessages   Message[] @relation("ReceivedMessages")
   posts              Post[]
+  postLikes          PostLike[]
 }
 
 model Rating {
@@ -77,4 +78,16 @@ model Post {
   author    User      @relation(fields: [authorId], references: [id])
   authorId  String
   comments  Comment[]
+  likes     PostLike[]
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId]) // Ensures a user can only like a post once
 }

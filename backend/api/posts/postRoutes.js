@@ -18,7 +18,20 @@ router.get('/user/:userId', postController.getUserPosts);
 router.use(authMiddleware); // Apply auth middleware to all routes below
 
 // Post management
-router.post('/', multer.single('media'), postValidationRules.create, validate, postController.createPost);
+router.post('/', 
+  (req, res, next) => {
+    // Check if the request is multipart/form-data
+    if (req.headers['content-type']?.includes('multipart/form-data')) {
+      multer.single('media')(req, res, next);
+    } else {
+      next();
+    }
+  },
+  postValidationRules.create,
+  validate,
+  postController.createPost
+);
+
 router.put('/:id', multer.single('media'), postValidationRules.update, validate, postController.updatePost);
 router.delete('/:id', postController.deletePost);
 

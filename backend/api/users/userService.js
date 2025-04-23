@@ -7,6 +7,8 @@ const getUserById = async (userId) => {
       id: true,
       username: true,
       email: true,
+      firstName: true,
+      lastName: true,
       profilePicture: true,
       bio: true,
       location: true,

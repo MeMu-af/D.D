@@ -10,8 +10,8 @@ const { body } = require('express-validator');
 router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserProfile);
 
-// Protected routes
-router.use(authMiddleware); // Apply auth middleware to all routes below
+// Apply auth middleware to all routes below
+router.use(authMiddleware());
 
 // User profile management
 router.put('/:id', userValidationRules.update, validate, userController.updateUserProfile);

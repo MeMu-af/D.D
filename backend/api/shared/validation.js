@@ -30,20 +30,17 @@ const userValidationRules = {
 const postValidationRules = {
   create: [
     body('title').notEmpty().trim().withMessage('Title is required'),
-    body('content').notEmpty().trim().withMessage('Content is required'),
-    body('media').optional().isString()
+    body('content').notEmpty().trim().withMessage('Content is required')
   ],
   update: [
     body('title').optional().trim(),
-    body('content').optional().trim(),
-    body('media').optional().isString()
+    body('content').optional().trim()
   ]
 };
 
 const commentValidationRules = {
   create: [
-    body('content').notEmpty().trim().withMessage('Comment content is required'),
-    body('postId').notEmpty().withMessage('Post ID is required')
+    body('content').notEmpty().trim().withMessage('Comment content is required')
   ],
   update: [
     body('content').notEmpty().trim().withMessage('Comment content is required')

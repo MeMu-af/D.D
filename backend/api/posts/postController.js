@@ -1,13 +1,23 @@
 const postService = require('./postService');
 
 exports.createPost = async (req, res) => {
-  const { title, content } = req.body;
-  const media = req.file ? `/uploads/${req.file.filename}` : null;
+  console.time('createPostController');
   try {
-    const post = await postService.createPost(title, content, req.user.userId, media);
+    const { title, content } = req.body;
+    console.log('Creating post with title:', title);
+
+    if (!title || !content) {
+      console.log('Missing required fields');
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const post = await postService.createPost(title, content, req.user.id);
+    console.timeEnd('createPostController');
     res.status(201).json(post);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating post', details: error.message });
+    console.error('Error in createPostController:', error);
+    console.timeEnd('createPostController');
+    res.status(500).json({ error: 'Failed to create post' });
   }
 };
 
