@@ -1,22 +1,46 @@
 const postService = require('./postService');
 
 exports.createPost = async (req, res) => {
-  console.time('createPostController');
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[${requestId}] Create post request started`);
+  console.time(`[${requestId}] createPostController`);
+  
   try {
     const { title, content } = req.body;
-    console.log('Creating post with title:', title);
+    console.log(`[${requestId}] Request data:`, {
+      title,
+      content,
+      user: req.user,
+      headers: req.headers,
+      contentType: req.headers['content-type']
+    });
 
     if (!title || !content) {
-      console.log('Missing required fields');
+      console.log(`[${requestId}] Missing required fields`);
+      console.timeEnd(`[${requestId}] createPostController`);
       return res.status(400).json({ error: 'Title and content are required' });
     }
 
-    const post = await postService.createPost(title, content, req.user.id);
-    console.timeEnd('createPostController');
+    if (!req.user?.userId) {
+      console.log(`[${requestId}] No user ID found in request`);
+      console.timeEnd(`[${requestId}] createPostController`);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    console.log(`[${requestId}] Calling post service`);
+    const post = await postService.createPost(title, content, req.user.userId);
+    console.log(`[${requestId}] Post created:`, post);
+    
+    console.timeEnd(`[${requestId}] createPostController`);
     res.status(201).json(post);
   } catch (error) {
-    console.error('Error in createPostController:', error);
-    console.timeEnd('createPostController');
+    console.error(`[${requestId}] Error in createPostController:`, {
+      error: {
+        message: error.message,
+        stack: error.stack
+      }
+    });
+    console.timeEnd(`[${requestId}] createPostController`);
     res.status(500).json({ error: 'Failed to create post' });
   }
 };

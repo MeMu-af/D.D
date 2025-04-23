@@ -10,6 +10,22 @@ const prisma = require('./prisma');
 
 const app = express();
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Starting`);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  
+  // Log when the response is sent
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+  });
+  
+  next();
+});
+
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
@@ -57,33 +73,52 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Mount API routes
-app.use('/api', (req, res, next) => {
-  console.log('API request received:', {
+// Mount API routes with logging
+app.use('/api/v1', (req, res, next) => {
+  console.log('[API Request]', {
     method: req.method,
     path: req.path,
     headers: {
       authorization: req.headers.authorization ? 'Bearer [REDACTED]' : undefined,
       'content-type': req.headers['content-type']
-    }
+    },
+    body: req.body
   });
   next();
 });
 
-app.use('/api', apiRouter);
+app.use('/api/v1', apiRouter);
 
-// Error handling
+// Error handling with detailed logging
+app.use((err, req, res, next) => {
+  console.error('[Error]', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    headers: req.headers,
+    body: req.body
+  });
+  next(err);
+});
+
 app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Database URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+  console.log('JWT Secret:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Promise Rejection:', err);
+  console.error('[Unhandled Rejection]', {
+    message: err.message,
+    stack: err.stack
+  });
   // Don't exit the process in production, just log the error
   if (process.env.NODE_ENV !== 'production') {
     process.exit(1);

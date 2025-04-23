@@ -6,35 +6,32 @@ const authRoutes = require('./auth/authRoutes');
 const postRoutes = require('./posts/postRoutes');
 const errorHandler = require('./shared/errorHandler');
 
-// API version prefix
-const API_VERSION = '/v1';
-
-// Mount routes
-router.use(`${API_VERSION}/users`, userRoutes);
-router.use(`${API_VERSION}/auth`, authRoutes);
-router.use(`${API_VERSION}/posts`, postRoutes);
+// Mount routes directly without version prefix since it's already in the base URL
+router.use('/users', userRoutes);
+router.use('/auth', authRoutes);
+router.use('/posts', postRoutes);
 
 // API documentation routes
 router.get('/', (req, res) => {
   res.json({
     message: 'Welcome to the API',
     version: '1.0',
-    documentation: `${req.baseUrl}${API_VERSION}`,
+    documentation: `${req.baseUrl}`,
     endpoints: {
-      auth: `${API_VERSION}/auth`,
-      users: `${API_VERSION}/users`,
-      posts: `${API_VERSION}/posts`
+      auth: '/auth',
+      users: '/users',
+      posts: '/posts'
     }
   });
 });
 
-router.get(API_VERSION, (req, res) => {
+router.get('/docs', (req, res) => {
   res.json({
     message: 'API Documentation',
     version: '1.0',
     endpoints: {
       auth: {
-        base: `${API_VERSION}/auth`,
+        base: '/auth',
         routes: {
           register: { method: 'POST', path: '/register' },
           login: { method: 'POST', path: '/login' },
@@ -42,7 +39,7 @@ router.get(API_VERSION, (req, res) => {
         }
       },
       users: {
-        base: `${API_VERSION}/users`,
+        base: '/users',
         routes: {
           getAllUsers: { method: 'GET', path: '/' },
           getUserProfile: { method: 'GET', path: '/:userId' },
@@ -54,7 +51,7 @@ router.get(API_VERSION, (req, res) => {
         }
       },
       posts: {
-        base: `${API_VERSION}/posts`,
+        base: '/posts',
         routes: {
           getAllPosts: { method: 'GET', path: '/' },
           createPost: { method: 'POST', path: '/' },

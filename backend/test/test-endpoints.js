@@ -14,11 +14,11 @@ let serverProcess = null;
 
 // Configuration
 const config = {
-  timeout: 30000, // Increased to 30 seconds
-  maxRetries: 3,  // Increased to 3 retries
-  retryDelay: 2000, // Increased to 2 seconds
-  serverWaitAttempts: 5, // Increased to 5 attempts
-  serverWaitDelay: 1000 // Increased to 1 second
+  timeout: 5000, // Reduced to 5 seconds
+  maxRetries: 1,  // Reduced to 1 retry
+  retryDelay: 1000, // Reduced to 1 second
+  serverWaitAttempts: 3, // Reduced to 3 attempts
+  serverWaitDelay: 500 // Reduced to 0.5 seconds
 };
 
 // Configure axios
@@ -71,63 +71,20 @@ axios.interceptors.response.use(
 
 // Start the server
 async function startServer() {
-  return new Promise((resolve, reject) => {
-    console.log('Starting server...');
-    serverProcess = spawn('node', ['server.js'], {
-      stdio: 'inherit',
-      env: { ...process.env, NODE_ENV: 'test', PORT: 3000 }
-    });
-
-    serverProcess.on('error', (err) => {
-      console.error('Failed to start server:', err);
-      reject(err);
-    });
-
-    serverProcess.on('exit', (code) => {
-      if (code !== null && code !== 0) {
-        console.error(`Server exited with code ${code}`);
-        reject(new Error(`Server exited with code ${code}`));
-      }
-    });
-
-    // Wait for server to be ready
-    const checkServer = async () => {
-      try {
-        const response = await axios.get('http://localhost:3000/health');
-        if (response.status === 200) {
-          console.log('Server is ready!');
-          resolve();
-        }
-      } catch (error) {
-        console.log('Waiting for server to start...');
-        setTimeout(checkServer, 1000);
-      }
-    };
-
-    // Start checking after a short delay
-    setTimeout(checkServer, 2000);
-  });
+  console.log('Using existing server on port 3000...');
+  await waitForServer();
 }
 
 // Stop the server
 async function stopServer() {
-  if (serverProcess) {
-    console.log('Stopping server...');
-    return new Promise((resolve) => {
-      serverProcess.on('exit', () => {
-        console.log('Server stopped');
-        serverProcess = null;
-        resolve();
-      });
-      serverProcess.kill();
-    });
-  }
+  console.log('Skipping server stop as we are using an existing server');
 }
 
 /**
  * Wait for server to be ready
  */
 async function waitForServer() {
+  console.log('Waiting for server to be ready...');
   let attempts = 0;
   
   while (attempts < config.serverWaitAttempts) {
@@ -135,14 +92,15 @@ async function waitForServer() {
       const response = await axios.get('http://localhost:3000/health');
       if (response.status === 200) {
         console.log('Server is ready!');
-        return true;
+        return;
       }
     } catch (error) {
-      console.log(`Waiting for server... (attempt ${attempts + 1}/${config.serverWaitAttempts})`);
+      console.log(`Server not ready yet (attempt ${attempts + 1}/${config.serverWaitAttempts})...`);
       await new Promise(resolve => setTimeout(resolve, config.serverWaitDelay));
       attempts++;
     }
   }
+  
   throw new Error('Server did not become ready in time');
 }
 
@@ -327,7 +285,7 @@ async function testCreatePost() {
     const response = await retryWithBackoff(() => 
       axios.post(`${BASE_URL}/posts`, postData, {
         headers: { 
-          Authorization: `Bearer ${authToken}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         }
       })

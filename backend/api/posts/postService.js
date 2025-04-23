@@ -2,8 +2,18 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const createPost = async (title, content, authorId, media = null) => {
-  console.time('createPost');
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[${requestId}] Post service createPost started`);
+  console.time(`[${requestId}] createPost`);
+  
   try {
+    console.log(`[${requestId}] Creating post with data:`, {
+      title,
+      content,
+      authorId,
+      media
+    });
+
     const result = await prisma.post.create({
       data: {
         title,
@@ -21,10 +31,25 @@ const createPost = async (title, content, authorId, media = null) => {
         }
       }
     });
-    console.timeEnd('createPost');
+
+    console.log(`[${requestId}] Post created successfully:`, result);
+    console.timeEnd(`[${requestId}] createPost`);
     return result;
   } catch (error) {
-    console.error('Error in createPost:', error);
+    console.error(`[${requestId}] Error in createPost:`, {
+      error: {
+        message: error.message,
+        stack: error.stack,
+        code: error.code
+      },
+      data: {
+        title,
+        content,
+        authorId,
+        media
+      }
+    });
+    console.timeEnd(`[${requestId}] createPost`);
     throw error;
   }
 };
