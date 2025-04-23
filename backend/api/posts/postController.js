@@ -7,41 +7,81 @@ exports.createPost = async (req, res) => {
   
   try {
     const { title, content } = req.body;
+    const media = req.file ? `/uploads/${req.file.filename}` : req.body.media;
+    
     console.log(`[${requestId}] Request data:`, {
       title,
       content,
+      media,
       user: req.user,
       headers: req.headers,
-      contentType: req.headers['content-type']
+      contentType: req.headers['content-type'],
+      body: req.body,
+      rawBody: req.rawBody
     });
 
     if (!title || !content) {
       console.log(`[${requestId}] Missing required fields`);
       console.timeEnd(`[${requestId}] createPostController`);
-      return res.status(400).json({ error: 'Title and content are required' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Title and content are required',
+        details: {
+          title: !title ? 'Title is required' : undefined,
+          content: !content ? 'Content is required' : undefined
+        }
+      });
     }
 
     if (!req.user?.userId) {
       console.log(`[${requestId}] No user ID found in request`);
       console.timeEnd(`[${requestId}] createPostController`);
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ 
+        success: false,
+        error: 'Unauthorized',
+        details: 'User ID not found in request'
+      });
     }
 
-    console.log(`[${requestId}] Calling post service`);
-    const post = await postService.createPost(title, content, req.user.userId);
+    console.log(`[${requestId}] Calling post service with media:`, media);
+    const post = await postService.createPost(title, content, req.user.userId, media);
     console.log(`[${requestId}] Post created:`, post);
     
     console.timeEnd(`[${requestId}] createPostController`);
-    res.status(201).json(post);
+    res.status(201).json({
+      success: true,
+      data: post
+    });
   } catch (error) {
     console.error(`[${requestId}] Error in createPostController:`, {
       error: {
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
+        code: error.code
       }
     });
     console.timeEnd(`[${requestId}] createPostController`);
-    res.status(500).json({ error: 'Failed to create post' });
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'The user who created this post could not be found'
+      });
+    }
+    
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        error: 'Database error',
+        details: 'A unique constraint was violated'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create post',
+      details: error.message
+    });
   }
 };
 
@@ -102,7 +142,22 @@ exports.likePost = async (req, res) => {
     const post = await postService.likePost(id, req.user.userId);
     res.json(post);
   } catch (error) {
-    res.status(500).json({ error: 'Error liking post', details: error.message });
+    if (error.message === 'Post not found') {
+      return res.status(404).json({ 
+        error: 'Post not found',
+        details: 'The post you are trying to like does not exist'
+      });
+    }
+    if (error.message === 'Post already liked by user') {
+      return res.status(400).json({ 
+        error: 'Post already liked',
+        details: 'You have already liked this post'
+      });
+    }
+    res.status(500).json({ 
+      error: 'Error liking post', 
+      details: error.message 
+    });
   }
 };
 

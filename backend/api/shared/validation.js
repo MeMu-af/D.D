@@ -30,11 +30,13 @@ const userValidationRules = {
 const postValidationRules = {
   create: [
     body('title').notEmpty().trim().withMessage('Title is required'),
-    body('content').notEmpty().trim().withMessage('Content is required')
+    body('content').notEmpty().trim().withMessage('Content is required'),
+    body('media').optional().isString().withMessage('Media must be a string')
   ],
   update: [
     body('title').optional().trim(),
-    body('content').optional().trim()
+    body('content').optional().trim(),
+    body('media').optional().isString().withMessage('Media must be a string')
   ]
 };
 

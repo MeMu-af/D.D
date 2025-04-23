@@ -15,10 +15,11 @@ router.get('/:id', postController.getPostById);
 router.get('/user/:userId', postController.getUserPosts);
 
 // Protected routes
-router.use(authMiddleware); // Apply auth middleware to all routes below
+router.use(authMiddleware());
 
 // Post management
 router.post('/', 
+  authMiddleware(),
   (req, res, next) => {
     // Check if the request is multipart/form-data
     if (req.headers['content-type']?.includes('multipart/form-data')) {

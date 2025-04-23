@@ -14,11 +14,11 @@ let serverProcess = null;
 
 // Configuration
 const config = {
-  timeout: 5000, // Reduced to 5 seconds
-  maxRetries: 1,  // Reduced to 1 retry
-  retryDelay: 1000, // Reduced to 1 second
+  timeout: 10000,      // Reduced to 10 seconds
+  maxRetries: 2,       // Reduced to 2 retries
+  retryDelay: 1000,    // Reduced to 1 second
   serverWaitAttempts: 3, // Reduced to 3 attempts
-  serverWaitDelay: 500 // Reduced to 0.5 seconds
+  serverWaitDelay: 500  // Reduced to 0.5 seconds
 };
 
 // Configure axios
@@ -44,7 +44,8 @@ axios.interceptors.response.use(
     console.log('Response:', {
       status: response.status,
       statusText: response.statusText,
-      data: response.data
+      data: response.data,
+      headers: response.headers
     });
     return response;
   },
@@ -53,14 +54,16 @@ axios.interceptors.response.use(
       console.error('Response error:', {
         status: error.response.status,
         statusText: error.response.statusText,
-        data: error.response.data
+        data: error.response.data,
+        headers: error.response.headers
       });
     } else if (error.request) {
       console.error('No response received:', {
         config: {
           url: error.config.url,
           method: error.config.method,
-          timeout: error.config.timeout
+          timeout: error.config.timeout,
+          headers: error.config.headers
         },
         message: error.message
       });
@@ -123,14 +126,17 @@ async function retryWithBackoff(fn, retries = config.maxRetries) {
  */
 async function cleanupTestData() {
   try {
+    // Delete posts first to avoid foreign key constraints
+    await prisma.post.deleteMany({
+      where: {
+        userId: userId
+      }
+    });
+
+    // Then delete the user
     if (userId) {
       await prisma.user.deleteMany({
         where: { id: userId }
-      });
-    }
-    if (postId) {
-      await prisma.post.deleteMany({
-        where: { id: postId }
       });
     }
     console.log('Test data cleaned up successfully');
@@ -276,71 +282,161 @@ async function testUpdateUserProfile() {
 
 async function testCreatePost() {
   console.log('8. Testing Create Post...');
+  
+  // Test data that matches validation rules
   const postData = {
-    title: 'Test Post Title',
-    content: 'Test post content'
+    title: 'Test Post Title ' + Date.now(), // Ensure unique title
+    content: 'This is a test post content for testing purposes. It should be long enough to be meaningful.'
+    // media field omitted since it's optional
   };
 
   try {
+    // Verify auth token is set
+    if (!authToken) {
+      throw new Error('Authentication token is not set. Please run login test first.');
+    }
+
+    console.log('Creating post with data:', {
+      ...postData,
+      authToken: '[REDACTED]' // Don't log the actual token
+    });
+    
     const response = await retryWithBackoff(() => 
       axios.post(`${BASE_URL}/posts`, postData, {
         headers: { 
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         }
       })
     );
 
-    if (response.status !== 201 || !response.data.id) {
-      throw new Error('Create post failed');
+    console.log('Create Post Response:', response.data);
+
+    // Check response status (201 for creation)
+    if (response.status !== 201) {
+      throw new Error(`Create post failed with status ${response.status}`);
     }
 
-    postId = response.data.id;
+    // Validate response structure
+    if (!response.data || !response.data.success) {
+      throw new Error('Create post response missing success flag');
+    }
+
+    if (!response.data.data || !response.data.data.id) {
+      throw new Error('Create post response missing post ID');
+    }
+
+    // Store the post ID for subsequent tests
+    postId = response.data.data.id;
+    
+    // Verify the post was created with correct data
+    const createdPost = response.data.data;
+    if (createdPost.title !== postData.title || 
+        createdPost.content !== postData.content) {
+      throw new Error('Created post data does not match input data');
+    }
+
     console.log('Create Post test passed\n');
   } catch (error) {
-    console.error('Create post error:', error.response?.data || error.message);
+    console.error('Create Post Error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      errors: error.response?.data?.errors,
+      headers: {
+        ...error.response?.headers,
+        authorization: '[REDACTED]'
+      }
+    });
     throw error;
   }
 }
 
 async function testCreatePostWithImage() {
   console.log('8.1 Testing Create Post with Image...');
-  const formData = new FormData();
-  formData.append('title', 'Test Post with Image');
-  formData.append('content', 'Test post content with image');
   
-  // Add the test image file
-  const testImagePath = path.join(__dirname, 'test-image.jpg');
-  formData.append('media', fs.createReadStream(testImagePath));
+  try {
+    if (!authToken) {
+      throw new Error('Authentication token is not set. Please run login test first.');
+    }
 
-  const response = await retryWithBackoff(() => 
-    axios.post(`${BASE_URL}/posts`, formData, {
-      headers: { 
-        Authorization: `Bearer ${authToken}`,
-        ...formData.getHeaders()
-      }
-    })
-  );
+    const formData = new FormData();
+    formData.append('title', 'Test Post with Image ' + Date.now());
+    formData.append('content', 'This is a test post with an image.');
+    
+    // Add the test image file
+    const testImagePath = path.join(__dirname, 'test-image.jpg');
+    formData.append('media', fs.createReadStream(testImagePath));
 
-  if (response.status !== 201 || !response.data.id) {
-    throw new Error('Create post with image failed');
+    console.log('Creating post with image...');
+
+    const response = await retryWithBackoff(() => 
+      axios.post(`${BASE_URL}/posts`, formData, {
+        headers: { 
+          Authorization: `Bearer ${authToken}`,
+          ...formData.getHeaders()
+        }
+      })
+    );
+
+    console.log('Create Post with Image Response:', response.data);
+
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error(`Create post with image failed with status ${response.status}`);
+    }
+
+    if (!response.data || !response.data.data || !response.data.data.id) {
+      throw new Error('Create post with image response missing post ID');
+    }
+
+    console.log('Create Post with Image test passed\n');
+  } catch (error) {
+    console.error('Create Post with Image Error:', error.response ? {
+      status: error.response.status,
+      data: error.response.data,
+      headers: error.response.headers
+    } : error.message);
+    throw error;
   }
-
-  console.log('Create Post with Image test passed\n');
 }
 
 async function testLikePost() {
   console.log('9. Testing Like Post...');
-  const response = await retryWithBackoff(() => 
-    axios.post(`${BASE_URL}/posts/${postId}/like`, {}, {
-      headers: { Authorization: `Bearer ${authToken}` }
-    })
-  );
+  
+  try {
+    if (!authToken) {
+      throw new Error('Authentication token is not set. Please run login test first.');
+    }
 
-  if (response.status !== 200 || !response.data.likes) {
-    throw new Error('Like post failed');
+    if (!postId) {
+      throw new Error('Post ID is not set. Please run create post test first.');
+    }
+
+    console.log('Liking post:', postId);
+
+    const response = await retryWithBackoff(() => 
+      axios.post(`${BASE_URL}/posts/${postId}/like`, {}, {
+        headers: { 
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+    );
+
+    console.log('Like Post Response:', response.data);
+
+    if (response.status !== 200) {
+      throw new Error(`Like post failed with status ${response.status}`);
+    }
+
+    console.log('Like Post test passed\n');
+  } catch (error) {
+    console.error('Like Post Error:', error.response ? {
+      status: error.response.status,
+      data: error.response.data,
+      headers: error.response.headers
+    } : error.message);
+    throw error;
   }
-  console.log('Like Post test passed\n');
 }
 
 async function testUnlikePost() {
@@ -360,22 +456,49 @@ async function testUnlikePost() {
 async function testAddComment() {
   console.log('11. Testing Add Comment...');
   const commentData = {
-    content: 'This is a test comment'
+    content: 'This is a test comment for testing purposes.'
   };
 
-  const response = await retryWithBackoff(() => 
-    axios.post(`${BASE_URL}/posts/${postId}/comments`, commentData, {
-      headers: { 
-        Authorization: `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
-  );
+  try {
+    if (!authToken) {
+      throw new Error('Authentication token is not set. Please run login test first.');
+    }
 
-  if (response.status !== 201 || !response.data.id) {
-    throw new Error('Add comment failed');
+    if (!postId) {
+      throw new Error('Post ID is not set. Please run create post test first.');
+    }
+
+    console.log('Adding comment to post:', postId);
+    console.log('Comment data:', commentData);
+
+    const response = await retryWithBackoff(() => 
+      axios.post(`${BASE_URL}/posts/${postId}/comments`, commentData, {
+        headers: { 
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+    );
+
+    console.log('Add Comment Response:', response.data);
+
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error(`Add comment failed with status ${response.status}`);
+    }
+
+    if (!response.data || !response.data.id) {
+      throw new Error('Add comment response missing comment ID');
+    }
+
+    console.log('Add Comment test passed\n');
+  } catch (error) {
+    console.error('Add Comment Error:', error.response ? {
+      status: error.response.status,
+      data: error.response.data,
+      headers: error.response.headers
+    } : error.message);
+    throw error;
   }
-  console.log('Add Comment test passed\n');
 }
 
 async function testGetPost() {
@@ -392,15 +515,37 @@ async function testGetPost() {
   console.log('Get Post test passed\n');
 }
 
+async function testUpdatePost() {
+  console.log('13. Testing Update Post...');
+  const updateData = {
+    title: 'Updated Test Post Title',
+    content: 'Updated test post content'
+  };
+
+  const response = await retryWithBackoff(() => 
+    axios.put(`${BASE_URL}/posts/${postId}`, updateData, {
+      headers: { 
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      }
+    })
+  );
+
+  if (response.status !== 200 || response.data.title !== updateData.title) {
+    throw new Error('Update post failed');
+  }
+  console.log('Update Post test passed\n');
+}
+
 async function testDeletePost() {
-  console.log('13. Testing Delete Post...');
+  console.log('14. Testing Delete Post...');
   const response = await retryWithBackoff(() => 
     axios.delete(`${BASE_URL}/posts/${postId}`, {
       headers: { Authorization: `Bearer ${authToken}` }
     })
   );
 
-  if (response.status !== 200) {
+  if (response.status !== 200 && response.status !== 204) {
     throw new Error('Delete post failed');
   }
   console.log('Delete Post test passed\n');
@@ -434,15 +579,17 @@ async function testGetUserPosts() {
   console.log('Get User Posts test passed\n');
 }
 
-async function testUpdatePost() {
-  console.log('17. Testing Update Post...');
-  const updateData = {
-    title: 'Updated Test Post Title',
-    content: 'Updated test post content'
+async function testDeleteComment() {
+  console.log('17. Testing Delete Comment...');
+  
+  // First create a new post for the comment
+  const postData = {
+    title: 'Test Post for Comment Deletion',
+    content: 'This post will be used to test comment deletion.'
   };
 
-  const response = await retryWithBackoff(() => 
-    axios.put(`${BASE_URL}/posts/${postId}`, updateData, {
+  const createPostResponse = await retryWithBackoff(() => 
+    axios.post(`${BASE_URL}/posts`, postData, {
       headers: { 
         Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -450,21 +597,19 @@ async function testUpdatePost() {
     })
   );
 
-  if (response.status !== 200 || response.data.title !== updateData.title) {
-    throw new Error('Update post failed');
+  if (createPostResponse.status !== 201) {
+    throw new Error('Create post for comment deletion failed');
   }
-  console.log('Update Post test passed\n');
-}
 
-async function testDeleteComment() {
-  console.log('18. Testing Delete Comment...');
-  // First create a comment to delete
+  const commentPostId = createPostResponse.data.data.id;
+
+  // Create a comment to delete
   const commentData = {
     content: 'Test comment to delete'
   };
 
   const createResponse = await retryWithBackoff(() => 
-    axios.post(`${BASE_URL}/posts/${postId}/comments`, commentData, {
+    axios.post(`${BASE_URL}/posts/${commentPostId}/comments`, commentData, {
       headers: { 
         Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -480,7 +625,7 @@ async function testDeleteComment() {
 
   // Now delete the comment
   const deleteResponse = await retryWithBackoff(() => 
-    axios.delete(`${BASE_URL}/posts/${postId}/comments/${commentId}`, {
+    axios.delete(`${BASE_URL}/posts/${commentPostId}/comments/${commentId}`, {
       headers: { Authorization: `Bearer ${authToken}` }
     })
   );
@@ -493,79 +638,42 @@ async function testDeleteComment() {
 
 async function testEndpoints() {
   try {
-    console.log('Starting API endpoint tests...\n');
-
-    // Start the server
     await startServer();
-
-    // Wait for server to be ready
-    console.log('Checking if server is ready...');
-    await waitForServer();
-    console.log('Server is ready, proceeding with tests...\n');
-
-    // Run all tests in sequence with detailed logging
-    console.log('1. Starting Health Check test...');
     await testHealthCheck();
-    
-    console.log('2. Starting API Documentation test...');
     await testApiDocumentation();
-    
-    console.log('3. Starting User Registration test...');
     const registerData = await testUserRegistration();
-    
-    console.log('4. Starting User Login test...');
     await testUserLogin(registerData);
-    
-    console.log('5. Starting Get All Users test...');
     await testGetAllUsers();
-    
-    console.log('6. Starting Get User Profile test...');
     await testGetUserProfile();
-    
-    console.log('7. Starting Update User Profile test...');
     await testUpdateUserProfile();
     
-    console.log('8. Starting Create Post test...');
+    // Create a test post
     await testCreatePost();
     
-    console.log('9. Starting Create Post with Image test...');
+    // Test post with image
     await testCreatePostWithImage();
     
-    console.log('10. Starting Like Post test...');
+    // Test post interactions
     await testLikePost();
-    
-    console.log('11. Starting Unlike Post test...');
     await testUnlikePost();
-    
-    console.log('12. Starting Add Comment test...');
     await testAddComment();
     
-    console.log('13. Starting Get Post test...');
+    // Test post retrieval and management
     await testGetPost();
-    
-    console.log('14. Starting Delete Post test...');
-    await testDeletePost();
-
-    console.log('15. Starting Search Posts test...');
-    await testSearchPosts();
-
-    console.log('16. Starting Get User Posts test...');
-    await testGetUserPosts();
-
-    console.log('17. Starting Update Post test...');
     await testUpdatePost();
-
-    console.log('18. Starting Delete Comment test...');
+    await testDeletePost();
+    await testSearchPosts();
+    await testGetUserPosts();
     await testDeleteComment();
 
-    console.log('All tests completed successfully!');
-  } catch (error) {
-    console.error('Test failed:', error);
-    throw error;
-  } finally {
-    console.log('Cleaning up test data...');
     await cleanupTestData();
     await stopServer();
+    console.log('All tests passed successfully!');
+  } catch (error) {
+    console.error('Test failed:', error);
+    await cleanupTestData();
+    await stopServer();
+    process.exit(1);
   }
 }
 

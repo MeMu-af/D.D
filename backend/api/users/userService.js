@@ -124,9 +124,9 @@ const deleteUser = async (userId) => {
 
 const getUserPosts = async (userId) => {
   return await prisma.post.findMany({
-    where: { authorId: userId },
+    where: { userId: userId },
     include: {
-      author: {
+      user: {
         select: {
           id: true,
           username: true,
@@ -136,7 +136,7 @@ const getUserPosts = async (userId) => {
       likes: true,
       comments: {
         include: {
-          author: {
+          user: {
             select: {
               id: true,
               username: true,
