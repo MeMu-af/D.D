@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const apiRouter = require('./api');
+const testEndpoints = require('./api/test-endpoints');
 const errorHandler = require('./api/shared/errorHandler');
 const sanitizeRequest = require('./api/shared/sanitization');
 const path = require('path');
@@ -88,6 +89,7 @@ app.use('/api/v1', (req, res, next) => {
 });
 
 app.use('/api/v1', apiRouter);
+app.use('/api/v1/test', testEndpoints);
 
 // Error handling with detailed logging
 app.use((err, req, res, next) => {
@@ -105,7 +107,7 @@ app.use((err, req, res, next) => {
 app.use(errorHandler);
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Environment:', process.env.NODE_ENV);

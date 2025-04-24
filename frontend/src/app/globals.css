@@ -1,8 +1,13 @@
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {
+    /* Font Variables */
+    --font-medieval: var(--font-medieval);
+    --font-cinzel: var(--font-cinzel);
+    
     /* Base Colors */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;

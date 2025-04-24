@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 const { spawn } = require('child_process');
+const { cleanupTestImages } = require('./image-cleanup');
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 let authToken = '';
@@ -126,6 +127,8 @@ async function retryWithBackoff(fn, retries = config.maxRetries) {
  */
 async function cleanupTestData() {
   try {
+    console.log('Starting test data cleanup...');
+    
     // Delete posts first to avoid foreign key constraints
     await prisma.post.deleteMany({
       where: {
@@ -139,6 +142,12 @@ async function cleanupTestData() {
         where: { id: userId }
       });
     }
+
+    // Clean up test images
+    console.log('Starting image cleanup...');
+    const imageCleanupResult = await cleanupTestImages();
+    console.log('Image cleanup result:', imageCleanupResult);
+
     console.log('Test data cleaned up successfully');
   } catch (error) {
     console.error('Error cleaning up test data:', error);
@@ -668,7 +677,7 @@ async function testEndpoints() {
 
     await cleanupTestData();
     await stopServer();
-    console.log('All tests passed successfully!');
+    console.log('All tests passed. ROCK N ROLL BABY!');
   } catch (error) {
     console.error('Test failed:', error);
     await cleanupTestData();
@@ -681,7 +690,7 @@ async function testEndpoints() {
 console.log('Starting test suite...');
 testEndpoints()
   .then(() => {
-    console.log('Test suite completed successfully');
+    console.log('TEST COMPLETE');
     process.exit(0);
   })
   .catch(error => {
