@@ -1,15 +1,12 @@
-import type { Config } from "tailwindcss"
-import animate from "tailwindcss-animate"
-
-const config = {
-  darkMode: "class",
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
-  prefix: "",
   theme: {
     container: {
       center: true,
@@ -53,20 +50,6 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // D&D Theme Colors
-        parchment: "hsl(var(--parchment))",
-        scroll: "hsl(var(--scroll))",
-        ink: "hsl(var(--ink))",
-        gold: "hsl(var(--gold))",
-        silver: "hsl(var(--silver))",
-        bronze: "hsl(var(--bronze))",
-        dragon: {
-          red: "hsl(var(--dragon-red))",
-          blue: "hsl(var(--dragon-blue))",
-          green: "hsl(var(--dragon-green))",
-          black: "hsl(var(--dragon-black))",
-          white: "hsl(var(--dragon-white))",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -75,25 +58,19 @@ const config = {
       },
       keyframes: {
         "accordion-down": {
-          from: { height: "0" },
+          from: { height: 0 },
           to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
+          to: { height: 0 },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
-      fontFamily: {
-        medieval: ["MedievalSharp", "serif"],
-        fantasy: ["Cinzel", "serif"],
-      },
     },
   },
-  plugins: [animate],
-} satisfies Config
-
-export default config 
+  plugins: [require("tailwindcss-animate")],
+} 

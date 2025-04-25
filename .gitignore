@@ -15,11 +15,10 @@ coverage/
 test-results/
 jest-results.json
 
-# Next.js (Frontend)
-frontend/.next/
-frontend/out/
-frontend/build/
+# Vite (Frontend)
 frontend/dist/
+frontend/.vite/
+*.local
 
 # Production
 build/
@@ -49,7 +48,6 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
-next-env.d.ts
 
 # IDE
 .idea/
