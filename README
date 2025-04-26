@@ -1,6 +1,0 @@
-Add function to play virtually
-TestUser password: password123
-
-
-auth-forms.tsx should be renamed to AuthForms.tsx to follow React component naming conventions
-main-layout.tsx should be renamed to MainLayout.tsx
