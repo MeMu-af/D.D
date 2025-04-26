@@ -7,7 +7,7 @@ const FormData = require('form-data');
 const { spawn } = require('child_process');
 const { cleanupTestImages } = require('./image-cleanup');
 
-const BASE_URL = 'http://localhost:3000/api/v1';
+const BASE_URL = 'http://localhost:3001/api/v1';
 let authToken = '';
 let userId = '';
 let postId = '';
@@ -93,7 +93,7 @@ async function waitForServer() {
   
   while (attempts < config.serverWaitAttempts) {
     try {
-      const response = await axios.get('http://localhost:3000/health');
+      const response = await axios.get('http://localhost:3001/health');
       if (response.status === 200) {
         console.log('Server is ready!');
         return;
@@ -159,7 +159,7 @@ async function cleanupTestData() {
  */
 async function testHealthCheck() {
   console.log('1. Testing Health Check...');
-  const response = await axios.get('http://localhost:3000/health');
+  const response = await axios.get('http://localhost:3001/health');
   if (response.status !== 200) {
     throw new Error('Health check failed');
   }
