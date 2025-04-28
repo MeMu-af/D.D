@@ -33,7 +33,7 @@ exports.createPost = async (req, res) => {
       });
     }
 
-    if (!req.user?.userId) {
+    if (!req.user?.id) {
       console.log(`[${requestId}] No user ID found in request`);
       console.timeEnd(`[${requestId}] createPostController`);
       return res.status(401).json({ 
@@ -44,7 +44,7 @@ exports.createPost = async (req, res) => {
     }
 
     console.log(`[${requestId}] Calling post service with media:`, media);
-    const post = await postService.createPost(title, content, req.user.userId, media);
+    const post = await postService.createPost(title, content, req.user.id, media);
     console.log(`[${requestId}] Post created:`, post);
     
     console.timeEnd(`[${requestId}] createPostController`);
@@ -139,7 +139,7 @@ exports.getUserPosts = async (req, res) => {
 exports.likePost = async (req, res) => {
   const { id } = req.params;
   try {
-    const post = await postService.likePost(id, req.user.userId);
+    const post = await postService.likePost(id, req.user.id);
     res.json(post);
   } catch (error) {
     if (error.message === 'Post not found') {
@@ -164,7 +164,7 @@ exports.likePost = async (req, res) => {
 exports.unlikePost = async (req, res) => {
   const { id } = req.params;
   try {
-    const post = await postService.unlikePost(id, req.user.userId);
+    const post = await postService.unlikePost(id, req.user.id);
     res.json(post);
   } catch (error) {
     res.status(500).json({ error: 'Error unliking post', details: error.message });
@@ -180,7 +180,7 @@ exports.addComment = async (req, res) => {
   }
   
   try {
-    const comment = await postService.addComment(id, content, req.user.userId);
+    const comment = await postService.addComment(id, content, req.user.id);
     res.status(201).json(comment);
   } catch (error) {
     res.status(500).json({ error: 'Error adding comment', details: error.message });

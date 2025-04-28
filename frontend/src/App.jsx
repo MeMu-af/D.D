@@ -1,41 +1,42 @@
-import { Box, Container, Heading, Text, VStack } from '@chakra-ui/react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import Navbar from './components/Navbar'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Box } from '@chakra-ui/react';
+import { AuthProvider } from './components/AuthContext';
+import { useAuth } from './components/AuthContext';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Profile from './pages/Profile';
+
+function PrivateRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return <Box>Loading...</Box>;
+  }
+  
+  return isAuthenticated ? children : <Navigate to="/" />;
+}
 
 function App() {
   return (
-    <Router>
-      <Box minH="100vh" bg="dnd.dungeonGray">
-        <Navbar />
-        <Container maxW="container.xl" py={8}>
+    <AuthProvider>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Box minH="100vh" bg="dnd.dungeonGray">
+          <Navbar />
           <Routes>
-            <Route path="/" element={
-              <VStack spacing={8} align="center" py={12}>
-                <Heading 
-                  as="h1" 
-                  size="2xl" 
-                  color="dnd.gold"
-                  fontFamily="heading"
-                  textAlign="center"
-                >
-                  Welcome to Dragon's Dream
-                </Heading>
-                <Text 
-                  fontSize="xl" 
-                  color="dnd.parchment"
-                  textAlign="center"
-                  maxW="2xl"
-                >
-                  Your epic journey begins here. Manage your campaigns, create characters, 
-                  and forge legends that will be told for generations.
-                </Text>
-              </VStack>
-            } />
+            <Route path="/" element={<Home />} />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <Profile />
+                </PrivateRoute>
+              }
+            />
           </Routes>
-        </Container>
-      </Box>
-    </Router>
-  )
+        </Box>
+      </Router>
+    </AuthProvider>
+  );
 }
 
-export default App 
+export default App; 

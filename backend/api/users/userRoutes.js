@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('./userController');
-const authMiddleware = require('../auth/authMiddleware');
+const { authenticateToken } = require('../auth/authService');
 const multer = require('../shared/multer');
 const { userValidationRules, validate } = require('../shared/validation');
 const { body } = require('express-validator');
@@ -11,7 +11,7 @@ router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserProfile);
 
 // Apply auth middleware to all routes below
-router.use(authMiddleware());
+router.use(authenticateToken);
 
 // User profile management
 router.put('/:id', userValidationRules.update, validate, userController.updateUserProfile);

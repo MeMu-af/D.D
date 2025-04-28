@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const registerUser = async (username, email, password, locationData = {}) => {
   const hashedPassword = await bcrypt.hash(password, 10);
   
-  return await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       username,
       email,
@@ -17,43 +17,50 @@ const registerUser = async (username, email, password, locationData = {}) => {
       id: true,
       username: true,
       email: true,
+      bio: true,
       location: true,
-      latitude: true,
-      longitude: true,
-      createdAt: true
+      experience: true,
+      profilePicture: true,
+      createdAt: true,
+      updatedAt: true
     }
   });
+
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  
+  return { token, user };
 };
 
 const loginUser = async (email, password) => {
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      password: true,
+      bio: true,
+      location: true,
+      experience: true,
+      profilePicture: true
+    }
   });
 
   if (!user) {
     throw new Error('User not found');
   }
 
-  const isValidPassword = await bcrypt.compare(password, user.password);
-  if (!isValidPassword) {
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) {
     throw new Error('Invalid password');
   }
 
-  const token = jwt.sign(
-    { userId: user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-
-  return {
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      profilePicture: user.profilePicture
-    }
-  };
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  
+  // Remove password from user object before returning
+  const { password: _, ...userWithoutPassword } = user;
+  
+  return { token, user: userWithoutPassword };
 };
 
 const verifyToken = async (token) => {
@@ -65,7 +72,12 @@ const verifyToken = async (token) => {
         id: true,
         username: true,
         email: true,
-        profilePicture: true
+        bio: true,
+        location: true,
+        experience: true,
+        profilePicture: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -79,8 +91,51 @@ const verifyToken = async (token) => {
   }
 };
 
+const updateProfile = async (userId, profileData) => {
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...profileData,
+      updatedAt: new Date()
+    },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      bio: true,
+      location: true,
+      experience: true,
+      favoriteClasses: true,
+      profilePicture: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
+
+  return updatedUser;
+};
+
+const authenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const user = await verifyToken(token);
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
-  verifyToken
+  verifyToken,
+  updateProfile,
+  authenticateToken
 }; 

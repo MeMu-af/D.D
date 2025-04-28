@@ -1,7 +1,7 @@
 const prisma = require('../../prisma');
 
 const getUserById = async (userId) => {
-  return await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
@@ -19,6 +19,7 @@ const getUserById = async (userId) => {
       createdAt: true
     }
   });
+  return user ? formatUserProfilePicture(user) : null;
 };
 
 const updateUser = async (userId, updateData) => {
@@ -42,7 +43,8 @@ const updateUser = async (userId, updateData) => {
       bio: true,
       location: true,
       age: true,
-      experience: true
+      experience: true,
+      favoriteClasses: true
     };
 
     // Filter update data to only include allowed fields
@@ -96,7 +98,7 @@ const updateUser = async (userId, updateData) => {
       updatedFields: Object.keys(sanitizedData)
     });
 
-    return user;
+    return formatUserProfilePicture(user);
   } catch (error) {
     console.error('Error in updateUser service:', {
       error: {
@@ -150,6 +152,13 @@ const getUserPosts = async (userId) => {
       createdAt: 'desc'
     }
   });
+};
+
+const formatUserProfilePicture = (user) => {
+  if (user.profilePicture && !user.profilePicture.startsWith('http')) {
+    user.profilePicture = `/api/v1${user.profilePicture}`;
+  }
+  return user;
 };
 
 module.exports = {

@@ -95,8 +95,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = crypto.randomBytes(16).toString('hex');
-    const sanitizedFilename = sanitizeFilename(file.originalname);
-    cb(null, `${uniqueSuffix}-${sanitizedFilename}`);
+    const ext = allowedMimeTypes[file.mimetype];
+    cb(null, `${uniqueSuffix}.${ext}`);
   },
 });
 
@@ -122,12 +122,6 @@ const upload = multer({
     // Check file size
     if (file.size > MAX_FILE_SIZE) {
       return cb(new Error(`File size too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`), false);
-    }
-
-    // Check file extension
-    const ext = path.extname(file.originalname).toLowerCase().substring(1);
-    if (!Object.values(allowedMimeTypes).includes(ext)) {
-      return cb(new Error('Invalid file extension.'), false);
     }
 
     cb(null, true);

@@ -147,30 +147,67 @@ exports.getUserPosts = async (req, res) => {
 };
 
 exports.updateProfilePicture = async (req, res) => {
-  const { id } = req.params;
-  if (id !== req.user.userId) {
-    return res.status(403).json({ error: 'You can only update your own profile picture' });
-  }
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
   try {
+    console.log('Profile picture upload request received:', {
+      userId: req.params.id,
+      authenticatedUserId: req.user?.userId,
+      hasFile: !!req.file,
+      headers: {
+        authorization: req.headers.authorization ? 'Bearer [REDACTED]' : undefined,
+        'content-type': req.headers['content-type']
+      }
+    });
+
+    if (!req.user) {
+      console.error('No authenticated user found');
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { id } = req.params;
+    if (id !== req.user.userId) {
+      console.error('User ID mismatch:', {
+        requestedUserId: id,
+        authenticatedUserId: req.user.userId
+      });
+      return res.status(403).json({ error: 'You can only update your own profile picture' });
+    }
+
+    if (!req.file) {
+      console.error('No file uploaded');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
     // Get the subdirectory (images or videos) from the file path
     const subdir = req.file.mimetype.startsWith('image/') ? 'images' : 'videos';
     const profilePicturePath = `/uploads/${subdir}/${req.file.filename}`;
+    const fullProfilePictureUrl = profilePicturePath;
 
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
-        profilePicture: profilePicturePath
+        profilePicture: fullProfilePictureUrl
       }
     });
+
+    console.log('Profile picture updated successfully:', {
+      userId: updatedUser.id,
+      profilePicture: updatedUser.profilePicture
+    });
+
     res.json({ 
       message: 'Profile picture updated successfully',
       profilePicture: updatedUser.profilePicture
     });
   } catch (error) {
-    console.error('Error updating profile picture:', error);
+    console.error('Error updating profile picture:', {
+      error: {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      },
+      userId: req.params.id
+    });
     res.status(500).json({ error: 'Error updating profile picture', details: error.message });
   }
 };

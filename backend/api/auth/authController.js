@@ -18,8 +18,8 @@ exports.register = async (req, res) => {
       lastLocationUpdate: new Date()
     } : {};
     
-    const user = await authService.registerUser(username, email, password, locationData);
-    res.status(201).json(user);
+    const { token, user } = await authService.registerUser(username, email, password, locationData);
+    res.status(201).json({ token, user });
   } catch (error) {
     if (error.message.includes('already exists')) {
       return res.status(400).json({ error: 'Username or email already exists' });
@@ -41,119 +41,65 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      // Don't reveal if email exists or not
-      return res.json({ message: 'If an account exists, a password reset email has been sent' });
-    }
-
-    const resetToken = generateToken();
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
-
-    await prisma.user.update({
-      where: { email },
-      data: {
-        resetToken,
-        resetTokenExpiry
-      }
-    });
-
-    // TODO: Send password reset email
-    res.json({ message: 'Password reset email sent' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error processing password reset', details: error.message });
-  }
-};
-
-exports.resetPassword = async (req, res) => {
-  const { token, newPassword } = req.body;
-  try {
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gt: new Date()
-        }
-      }
-    });
-
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired reset token' });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        resetToken: null,
-        resetTokenExpiry: null
-      }
-    });
-
-    res.json({ message: 'Password reset successful' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error resetting password', details: error.message });
-  }
-};
-
-exports.verifyEmail = async (req, res) => {
-  const { token } = req.body;
-  try {
-    const user = await prisma.user.findFirst({
-      where: {
-        verificationToken: token,
-        isVerified: false
-      }
-    });
-
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid verification token' });
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        isVerified: true,
-        verificationToken: null
-      }
-    });
-
-    res.json({ message: 'Email verified successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error verifying email', details: error.message });
-  }
-};
-
-exports.resendVerification = async (req, res) => {
-  const { email } = req.body;
+exports.getCurrentUser = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { email },
-      select: { isVerified: true, verificationToken: true }
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        location: true,
+        experience: true,
+        profilePicture: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (user.isVerified) {
-      return res.status(400).json({ error: 'Email already verified' });
-    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching user', details: error.message });
+  }
+};
 
-    const newToken = generateToken();
-    await prisma.user.update({
-      where: { email },
-      data: { verificationToken: newToken }
+exports.updateProfile = async (req, res) => {
+  try {
+    const { location, experience, favoriteClasses, bio, profilePicture } = req.body;
+    const userId = req.user.id;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        location,
+        experience,
+        favoriteClasses,
+        bio,
+        profilePicture,
+        updatedAt: new Date()
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        location: true,
+        experience: true,
+        favoriteClasses: true,
+        profilePicture: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
 
-    // TODO: Send new verification email
-    res.json({ message: 'Verification email resent' });
+    res.json(updatedUser);
   } catch (error) {
-    res.status(500).json({ error: 'Error resending verification', details: error.message });
+    res.status(500).json({ error: 'Error updating profile', details: error.message });
   }
 };
 

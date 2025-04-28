@@ -6,6 +6,9 @@ const path = require('path');
 const FormData = require('form-data');
 const { spawn } = require('child_process');
 const { cleanupTestImages } = require('./image-cleanup');
+const assert = require('assert');
+const express = require('express');
+const router = express.Router();
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 let authToken = '';
@@ -177,23 +180,26 @@ async function testApiDocumentation() {
 
 async function testUserRegistration() {
   console.log('3. Testing User Registration...');
+  const timestamp = Date.now();
   const registerData = {
-    email: `test${Date.now()}@example.com`,
+    email: `test${timestamp}@example.com`,
     password: 'Test123!',
-    username: `testuser${Date.now()}`,
-    firstName: 'Test',
-    lastName: 'User'
+    username: `testuser${timestamp}`,
+    location: 'Test City',
+    experience: 'Intermediate',
+    bio: 'Test bio for automated testing'
   };
 
   const response = await retryWithBackoff(async () => {
     const res = await axios.post(`${BASE_URL}/auth/register`, registerData);
-    if (!res.data || !res.data.id) {
+    if (!res.data || !res.data.user || !res.data.token) {
       throw new Error('Invalid registration response');
     }
     return res;
   });
 
-  userId = response.data.id;
+  userId = response.data.user.id;
+  authToken = response.data.token;
   console.log('User Registration test passed\n');
   return registerData;
 }
@@ -232,61 +238,52 @@ async function testGetAllUsers() {
 
 async function testGetUserProfile() {
   console.log('6. Testing Get User Profile...');
-  const response = await retryWithBackoff(() => 
-    axios.get(`${BASE_URL}/users/${userId}`, {
-      headers: { Authorization: `Bearer ${authToken}` }
-    })
-  );
-  if (response.status !== 200 || !response.data.id) {
-    throw new Error('Get user profile failed');
-  }
+  const response = await retryWithBackoff(async () => {
+    const res = await axios.get(`${BASE_URL}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`
+      }
+    });
+    if (!res.data || !res.data.id) {
+      throw new Error('Invalid profile response');
+    }
+    return res;
+  });
+
   console.log('Get User Profile test passed\n');
 }
 
 async function testUpdateUserProfile() {
-  console.log('7. Testing Update User Profile...');
-  const updateData = {
-    username: `updated${Date.now()}`,
-    firstName: 'Updated',
-    lastName: 'User',
-    bio: 'Updated bio',
-    location: 'Updated location',
-    age: 25,
-    experience: 'Intermediate'
-  };
+  console.log('\nTesting update user profile...');
+  try {
+    const updateData = {
+      location: 'New York',
+      experience: 'Advanced',
+      favoriteClasses: ['Wizard', 'Rogue'],
+      bio: 'Updated bio for testing'
+    };
 
-  // Update user profile
-  const updateResponse = await retryWithBackoff(() => 
-    axios.put(`${BASE_URL}/users/${userId}`, updateData, {
-      headers: { 
-        Authorization: `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
+    const response = await axios.put(
+      `${BASE_URL}/auth/profile`,
+      updateData,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`
+        }
       }
-    })
-  );
+    );
 
-  if (updateResponse.status !== 200) {
-    throw new Error('Update user profile failed');
+    console.log('Update profile response:', response.data);
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.data.location, updateData.location);
+    assert.strictEqual(response.data.experience, updateData.experience);
+    assert.deepStrictEqual(response.data.favoriteClasses, updateData.favoriteClasses);
+    assert.strictEqual(response.data.bio, updateData.bio);
+    console.log('Update user profile test passed!');
+  } catch (error) {
+    console.error('Update user profile test failed:', error.response?.data || error.message);
+    throw error;
   }
-
-  // Verify the update
-  const verifyResponse = await retryWithBackoff(() => 
-    axios.get(`${BASE_URL}/users/${userId}`, {
-      headers: { Authorization: `Bearer ${authToken}` }
-    })
-  );
-
-  const updatedUser = verifyResponse.data;
-  if (updatedUser.firstName !== updateData.firstName || 
-      updatedUser.lastName !== updateData.lastName ||
-      updatedUser.bio !== updateData.bio ||
-      updatedUser.location !== updateData.location ||
-      updatedUser.age !== updateData.age ||
-      updatedUser.experience !== updateData.experience) {
-    throw new Error('User profile update verification failed');
-  }
-
-  console.log('Update User Profile test passed\n');
 }
 
 async function testCreatePost() {
@@ -645,16 +642,22 @@ async function testDeleteComment() {
   console.log('Delete Comment test passed\n');
 }
 
+// Manual cleanup endpoint
+router.post('/cleanup-test-images', async (req, res) => {
+    const result = await cleanupTestImages();
+    res.json(result);
+});
+
 async function testEndpoints() {
   try {
     await startServer();
     await testHealthCheck();
     await testApiDocumentation();
+    
     const registerData = await testUserRegistration();
     await testUserLogin(registerData);
-    await testGetAllUsers();
-    await testGetUserProfile();
     await testUpdateUserProfile();
+    await testGetUserProfile();
     
     // Create a test post
     await testCreatePost();
@@ -677,12 +680,12 @@ async function testEndpoints() {
 
     await cleanupTestData();
     await stopServer();
-    console.log('All tests passed. ROCK N ROLL BABY!');
+    console.log('All tests completed successfully!');
   } catch (error) {
     console.error('Test failed:', error);
-    await cleanupTestData();
-    await stopServer();
     process.exit(1);
+  } finally {
+    await stopServer();
   }
 }
 

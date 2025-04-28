@@ -2,14 +2,26 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const apiRouter = require('./api');
-const testEndpoints = require('./api/test-endpoints');
 const errorHandler = require('./api/shared/errorHandler');
 const sanitizeRequest = require('./api/shared/sanitization');
 const path = require('path');
 const fs = require('fs');
 const prisma = require('./prisma');
+const { PrismaClient } = require('@prisma/client');
+const authRoutes = require('./api/auth/authRoutes');
+const { authenticateToken } = require('./api/auth/authService');
+const upload = require('./api/shared/multer');
 
 const app = express();
+const prismaClient = new PrismaClient();
+
+// CORS configuration
+app.use(cors({
+  origin: 'http://localhost:5173', // Vite's default port
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -26,17 +38,6 @@ app.use((req, res, next) => {
   
   next();
 });
-
-// CORS configuration
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CORS_ORIGIN 
-    : ['http://localhost:3000', 'http://localhost:5173'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400 // Cache preflight requests for 24 hours
-}));
 
 // Basic middleware
 app.use(express.json({ limit: '10mb' }));
@@ -66,6 +67,70 @@ app.use('/uploads', express.static(uploadsPath, {
   }
 }));
 
+// Profile picture access route with authentication
+app.get('/api/v1/users/:id/profile-picture', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await prismaClient.user.findUnique({
+      where: { id: userId },
+      select: { profilePicture: true }
+    });
+
+    if (!user || !user.profilePicture) {
+      return res.status(404).json({ error: 'Profile picture not found' });
+    }
+
+    const imagePath = path.join(imagesPath, user.profilePicture);
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({ error: 'Profile picture file not found' });
+    }
+
+    // Set proper content type and cache headers
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(imagePath);
+  } catch (error) {
+    console.error('Error serving profile picture:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Profile picture upload route
+app.post('/api/v1/users/:id/profile-picture', authenticateToken, upload.single('profilePicture'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Update the user's profile picture in the database
+    const updatedUser = await prismaClient.user.update({
+      where: { id: userId },
+      data: { 
+        profilePicture: `/uploads/images/${req.file.filename}`,
+        updatedAt: new Date()
+      },
+      select: { 
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        location: true,
+        experience: true,
+        favoriteClasses: true,
+        profilePicture: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error uploading profile picture:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -89,7 +154,12 @@ app.use('/api/v1', (req, res, next) => {
 });
 
 app.use('/api/v1', apiRouter);
-app.use('/api/v1/test', testEndpoints);
+
+// Auth routes
+app.use('/api/v1/auth', authRoutes);
+
+// Protected routes
+app.put('/auth/profile', authenticateToken, require('./api/auth/authController').updateProfile);
 
 // Error handling with detailed logging
 app.use((err, req, res, next) => {

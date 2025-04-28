@@ -101,68 +101,41 @@ async function main() {
     try { await prisma.user.deleteMany(); } catch (e) {}
     console.log('Data cleared successfully');
 
-    // Create 10 test users
+    // Create test users
     console.log('Creating test users...');
-    for (let i = 0; i < 10; i++) {
+    const users = [];
+    for (let i = 0; i < 5; i++) {
       const hashedPassword = await bcrypt.hash('password123', 10);
       const user = await prisma.user.create({
         data: {
+          username: faker.internet.userName(),
           email: faker.internet.email(),
-          username: faker.internet.username(),
           password: hashedPassword,
+          firstName: faker.person.firstName(),
+          lastName: faker.person.lastName(),
           bio: faker.lorem.sentence(),
           location: faker.location.city(),
           latitude: faker.location.latitude(),
           longitude: faker.location.longitude(),
-          lastLocationUpdate: faker.date.recent(),
-          age: faker.number.int({ min: 18, max: 60 }),
-          experience: faker.helpers.arrayElement(['Beginner', 'Intermediate', 'Expert']),
-          profilePicture: faker.helpers.arrayElement(mediaFiles.avatars),
-        },
+          age: faker.number.int({ min: 18, max: 80 }),
+          experience: faker.helpers.arrayElement(['Beginner', 'Intermediate', 'Advanced', 'Veteran']),
+          favoriteClasses: faker.helpers.arrayElements([
+            'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk',
+            'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard'
+          ], { min: 1, max: 3 }),
+          profilePicture: mediaFiles.avatars[i % mediaFiles.avatars.length]
+        }
       });
-
-      // Create some posts for each user
-      for (let j = 0; j < 2; j++) {
-        const post = await prisma.post.create({
-          data: {
-            title: faker.lorem.sentence(),
-            content: faker.lorem.paragraph(),
-            media: faker.helpers.arrayElement([
-              null,
-              ...mediaFiles.images,
-              ...mediaFiles.videos
-            ]),
-            userId: user.id,
-          },
-        });
-
-        // Create some ratings for each post
-        await prisma.rating.create({
-          data: {
-            score: faker.number.int({ min: 1, max: 5 }),
-            userId: user.id,
-            postId: post.id,
-          },
-        });
-
-        // Create some comments for each post
-        await prisma.comment.create({
-          data: {
-            content: faker.lorem.paragraph(),
-            userId: user.id,
-            postId: post.id,
-          },
-        });
-      }
+      users.push(user);
     }
     console.log('Test users and posts created successfully');
 
     // Create some messages between users
     console.log('Creating test messages...');
-    const users = await prisma.user.findMany();
+    const allUsers = await prisma.user.findMany();
     for (let i = 0; i < 5; i++) {
-      const sender = faker.helpers.arrayElement(users);
-      const receiver = faker.helpers.arrayElement(users.filter(u => u.id !== sender.id));
+      const sender = faker.helpers.arrayElement(allUsers);
+      const receiver = faker.helpers.arrayElement(allUsers.filter(u => u.id !== sender.id));
       
       await prisma.message.create({
         data: {
