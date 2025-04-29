@@ -180,12 +180,24 @@ exports.updateProfilePicture = async (req, res) => {
     // Get the subdirectory (images or videos) from the file path
     const subdir = req.file.mimetype.startsWith('image/') ? 'images' : 'videos';
     const profilePicturePath = `/uploads/${subdir}/${req.file.filename}`;
-    const fullProfilePictureUrl = profilePicturePath;
+    const fullProfilePictureUrl = `/api/v1${profilePicturePath}`;
 
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
         profilePicture: fullProfilePictureUrl
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        location: true,
+        experience: true,
+        favoriteClasses: true,
+        profilePicture: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -194,10 +206,7 @@ exports.updateProfilePicture = async (req, res) => {
       profilePicture: updatedUser.profilePicture
     });
 
-    res.json({ 
-      message: 'Profile picture updated successfully',
-      profilePicture: updatedUser.profilePicture
-    });
+    res.json(updatedUser);
   } catch (error) {
     console.error('Error updating profile picture:', {
       error: {

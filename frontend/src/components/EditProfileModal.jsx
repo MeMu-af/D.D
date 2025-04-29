@@ -52,9 +52,7 @@ function EditProfileModal({ isOpen, onClose }) {
     bio: user?.bio || '',
     favoriteClasses: user?.favoriteClasses || [],
   });
-  const [profilePicture, setProfilePicture] = useState(
-    user?.profilePicture ? `/api/v1/users/${user.id}/profile-picture` : ''
-  );
+  const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
   const [selectedClass, setSelectedClass] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
@@ -65,7 +63,7 @@ function EditProfileModal({ isOpen, onClose }) {
   // Update profile picture when user changes
   useEffect(() => {
     if (user?.profilePicture) {
-      setProfilePicture(`/api/v1/users/${user.id}/profile-picture`);
+      setProfilePicture(user.profilePicture);
     }
   }, [user]);
 
@@ -131,8 +129,8 @@ function EditProfileModal({ isOpen, onClose }) {
       reader.readAsDataURL(file);
 
       // Upload image
-      const imageUrl = await uploadProfileImage(file);
-      setProfilePicture(imageUrl);
+      const response = await uploadProfileImage(file);
+      setProfilePicture(response.profilePicture);
       
       toast({
         title: 'Profile picture updated',
@@ -154,11 +152,12 @@ function EditProfileModal({ isOpen, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await updateUser({
+      const updatedUser = await updateUser({
         id: user.id,
         ...formData,
-        profilePicture,
+        profilePicture: profilePicture,
       });
+      setProfilePicture(updatedUser.profilePicture);
       onClose();
       toast({
         title: 'Profile updated',

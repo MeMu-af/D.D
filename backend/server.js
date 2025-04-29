@@ -48,29 +48,21 @@ app.use(sanitizeRequest);
 
 // Serve static files from uploads
 const uploadsPath = path.resolve('uploads');
-const imagesPath = path.join(uploadsPath, 'images');
-const videosPath = path.join(uploadsPath, 'videos');
-
-// Create directories if they don't exist
-[uploadsPath, imagesPath, videosPath].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Serve static files with proper caching and security headers
-app.use('/uploads', express.static(uploadsPath, {
-  maxAge: '1h',
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-  }
-}));
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsPath));
 
 // Profile picture access route with authentication
 app.get('/api/v1/users/:id/profile-picture', authenticateToken, async (req, res) => {
   try {
     const userId = req.params.id;
+    
+    // Check if the authenticated user is requesting their own profile picture
+    if (req.user.id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to view this profile picture' });
+    }
+
     const user = await prismaClient.user.findUnique({
       where: { id: userId },
       select: { profilePicture: true }
@@ -80,7 +72,10 @@ app.get('/api/v1/users/:id/profile-picture', authenticateToken, async (req, res)
       return res.status(404).json({ error: 'Profile picture not found' });
     }
 
-    const imagePath = path.join(imagesPath, user.profilePicture);
+    // Extract the file path from the URL
+    const filePath = user.profilePicture.replace('/api/v1', '');
+    const imagePath = path.join(__dirname, '..', filePath);
+
     if (!fs.existsSync(imagePath)) {
       return res.status(404).json({ error: 'Profile picture file not found' });
     }
@@ -99,15 +94,22 @@ app.get('/api/v1/users/:id/profile-picture', authenticateToken, async (req, res)
 app.post('/api/v1/users/:id/profile-picture', authenticateToken, upload.single('profilePicture'), async (req, res) => {
   try {
     const userId = req.params.id;
+    if (req.user.id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to update this profile picture' });
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     // Update the user's profile picture in the database
+    const profilePicturePath = `/uploads/images/${req.file.filename}`;
+    const fullProfilePictureUrl = `/api/v1${profilePicturePath}`;
+
     const updatedUser = await prismaClient.user.update({
       where: { id: userId },
       data: { 
-        profilePicture: `/uploads/images/${req.file.filename}`,
+        profilePicture: fullProfilePictureUrl,
         updatedAt: new Date()
       },
       select: { 
@@ -159,7 +161,7 @@ app.use('/api/v1', apiRouter);
 app.use('/api/v1/auth', authRoutes);
 
 // Protected routes
-app.put('/auth/profile', authenticateToken, require('./api/auth/authController').updateProfile);
+app.put('/api/v1/auth/profile', authenticateToken, require('./api/auth/authController').updateProfile);
 
 // Error handling with detailed logging
 app.use((err, req, res, next) => {

@@ -30,7 +30,7 @@ function LoginModal({ isOpen, onClose }) {
 
     try {
       const user = await login(credentials.email, credentials.password);
-      if (user) {
+      if (user && !loading) {
         onClose();
         navigate('/profile');
         toast({

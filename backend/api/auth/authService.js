@@ -85,6 +85,8 @@ const verifyToken = async (token) => {
       throw new Error('User not found');
     }
 
+    // Ensure userId is set
+    user.userId = user.id;
     return user;
   } catch (error) {
     throw new Error('Invalid token');

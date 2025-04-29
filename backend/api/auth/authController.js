@@ -73,12 +73,15 @@ exports.updateProfile = async (req, res) => {
     const { location, experience, favoriteClasses, bio, profilePicture } = req.body;
     const userId = req.user.id;
 
+    // Ensure favoriteClasses is an array
+    const sanitizedFavoriteClasses = Array.isArray(favoriteClasses) ? favoriteClasses : [];
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         location,
         experience,
-        favoriteClasses,
+        favoriteClasses: sanitizedFavoriteClasses,
         bio,
         profilePicture,
         updatedAt: new Date()
@@ -97,8 +100,21 @@ exports.updateProfile = async (req, res) => {
       }
     });
 
+    // Log the update for debugging
+    console.log('Profile updated:', {
+      userId: updatedUser.id,
+      updatedFields: {
+        location: !!location,
+        experience: !!experience,
+        favoriteClasses: sanitizedFavoriteClasses.length,
+        bio: !!bio,
+        profilePicture: !!profilePicture
+      }
+    });
+
     res.json(updatedUser);
   } catch (error) {
+    console.error('Error updating profile:', error);
     res.status(500).json({ error: 'Error updating profile', details: error.message });
   }
 };

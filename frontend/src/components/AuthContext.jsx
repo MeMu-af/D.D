@@ -32,7 +32,8 @@ export function AuthProvider({ children }) {
       const userData = await authService.getCurrentUser();
       // Format the profile picture URL if it exists
       if (userData.profilePicture) {
-        userData.profilePicture = `/api/v1/users/${userData.id}/profile-picture`;
+        // Ensure the URL starts with /uploads
+        userData.profilePicture = userData.profilePicture.replace('/api/v1', '');
       }
       setUser(userData);
       setError(null);
@@ -53,12 +54,13 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
+      setLoading(true);
       const { token, user } = await authService.login(email, password);
       localStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       // Format the profile picture URL if it exists
       if (user.profilePicture) {
-        user.profilePicture = `/api/v1/users/${user.id}/profile-picture`;
+        user.profilePicture = user.profilePicture.replace('/api/v1', '');
       }
       setUser(user);
       setError(null);
@@ -66,11 +68,14 @@ export function AuthProvider({ children }) {
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (userData) => {
     try {
+      setLoading(true);
       const { token, user } = await authService.register(userData);
       localStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -80,6 +85,8 @@ export function AuthProvider({ children }) {
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,6 +101,10 @@ export function AuthProvider({ children }) {
   const updateUser = async (userData) => {
     try {
       const updatedUser = await authService.updateProfile(userData);
+      // Format the profile picture URL if it exists
+      if (updatedUser.profilePicture) {
+        updatedUser.profilePicture = updatedUser.profilePicture.replace('/api/v1', '');
+      }
       setUser(updatedUser);
       setError(null);
       return updatedUser;
@@ -112,11 +123,11 @@ export function AuthProvider({ children }) {
           'Content-Type': 'multipart/form-data',
         },
       });
-      const profilePicture = `/api/v1/users/${user.id}/profile-picture`;
-      const updatedUser = { ...user, profilePicture };
+      // Update the user state with the new profile picture
+      const updatedUser = { ...user, profilePicture: response.data.profilePicture.replace('/api/v1', '') };
       setUser(updatedUser);
       setError(null);
-      return updatedUser;
+      return response.data;
     } catch (err) {
       setError(err.response?.data?.error || 'Upload failed');
       throw err;

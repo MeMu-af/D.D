@@ -219,7 +219,10 @@ async function testUserLogin(registerData) {
     return res;
   });
 
-  authToken = response.data.token;
+  // Only set authToken if it's not already set
+  if (!authToken) {
+    authToken = response.data.token;
+  }
   console.log('User Login test passed\n');
 }
 
