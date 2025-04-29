@@ -9,14 +9,17 @@ const authService = require('./authService');
 const generateToken = () => crypto.randomBytes(32).toString('hex');
 
 exports.register = async (req, res) => {
-  const { username, email, password, location, latitude, longitude } = req.body;
+  const { username, email, password, city, state, latitude, longitude } = req.body;
   try {
-    const locationData = location && latitude && longitude ? {
-      location,
-      latitude,
-      longitude,
-      lastLocationUpdate: new Date()
-    } : {};
+    const locationData = {
+      city,
+      state,
+      ...(latitude && longitude ? {
+        latitude,
+        longitude,
+        lastLocationUpdate: new Date()
+      } : {})
+    };
     
     const { token, user } = await authService.registerUser(username, email, password, locationData);
     res.status(201).json({ token, user });
@@ -50,7 +53,8 @@ exports.getCurrentUser = async (req, res) => {
         username: true,
         email: true,
         bio: true,
-        location: true,
+        city: true,
+        state: true,
         experience: true,
         profilePicture: true,
         createdAt: true,
@@ -70,7 +74,7 @@ exports.getCurrentUser = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { location, experience, favoriteClasses, bio, profilePicture } = req.body;
+    const { city, state, experience, favoriteClasses, bio, profilePicture } = req.body;
     const userId = req.user.id;
 
     // Ensure favoriteClasses is an array
@@ -79,7 +83,8 @@ exports.updateProfile = async (req, res) => {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        location,
+        city,
+        state,
         experience,
         favoriteClasses: sanitizedFavoriteClasses,
         bio,
@@ -91,7 +96,8 @@ exports.updateProfile = async (req, res) => {
         username: true,
         email: true,
         bio: true,
-        location: true,
+        city: true,
+        state: true,
         experience: true,
         favoriteClasses: true,
         profilePicture: true,
@@ -104,7 +110,8 @@ exports.updateProfile = async (req, res) => {
     console.log('Profile updated:', {
       userId: updatedUser.id,
       updatedFields: {
-        location: !!location,
+        city: !!city,
+        state: !!state,
         experience: !!experience,
         favoriteClasses: sanitizedFavoriteClasses.length,
         bio: !!bio,

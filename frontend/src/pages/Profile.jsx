@@ -68,7 +68,7 @@ function Profile() {
                 <VStack align="start" spacing={2}>
                   <Heading size="lg">{user?.username}</Heading>
                   <Text fontSize="md" color="dnd.gold">
-                    {user?.location || 'Location not set'}
+                    {user?.city && user?.state ? `${user.city}, ${user.state}` : 'Location not set'}
                   </Text>
                 </VStack>
               </HStack>

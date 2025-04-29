@@ -22,14 +22,15 @@ model User {
   firstName          String?
   lastName           String?
   bio                String?
-  location           String? // City/place name for user-friendly display
+  city               String?    // City name
+  state              String?    // State abbreviation
   latitude           Float?
   longitude          Float?
   lastLocationUpdate DateTime?
   age                Int?
-  experience         String? // e.g., "Beginner", "Intermediate", "Expert"
+  experience         String?    // e.g., "Beginner", "Intermediate", "Expert"
   favoriteClasses    String[]   @default([]) // Array of favorite D&D classes
-  profilePicture     String? // URL to the profile picture
+  profilePicture     String?    // URL to the profile picture
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   ratings            Rating[]

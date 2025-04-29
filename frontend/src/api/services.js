@@ -27,7 +27,8 @@ export const authService = {
       ...userData,
       favoriteClasses: userData.favoriteClasses || [],
       experience: userData.experience || '',
-      location: userData.location || '',
+      city: userData.city || '',
+      state: userData.state || '',
       bio: userData.bio || ''
     });
     return response.data;

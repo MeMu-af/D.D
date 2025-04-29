@@ -7,7 +7,8 @@ const userValidationRules = {
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
     body('username').isLength({ min: 3 }).withMessage('Username must be at least 3 characters long'),
     body('bio').optional().isString().trim(),
-    body('location').optional().isString().trim(),
+    body('city').isString().trim().withMessage('City is required'),
+    body('state').isString().trim().isLength({ min: 2, max: 2 }).withMessage('State must be a valid 2-letter abbreviation'),
     body('age').optional().isInt({ min: 13 }).withMessage('Must be at least 13 years old'),
     body('experience').optional().isString().trim()
   ],
@@ -21,7 +22,8 @@ const userValidationRules = {
     body('firstName').optional().isString().trim(),
     body('lastName').optional().isString().trim(),
     body('bio').optional().isString().trim(),
-    body('location').optional().isString().trim(),
+    body('city').optional().isString().trim(),
+    body('state').optional().isString().trim().isLength({ min: 2, max: 2 }).withMessage('State must be a valid 2-letter abbreviation'),
     body('age').optional().isInt({ min: 13 }).withMessage('Must be at least 13 years old'),
     body('experience').optional().isString().trim()
   ]
