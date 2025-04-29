@@ -30,11 +30,6 @@ export function AuthProvider({ children }) {
   const fetchUser = async () => {
     try {
       const userData = await authService.getCurrentUser();
-      // Format the profile picture URL if it exists
-      if (userData.profilePicture) {
-        // Ensure the URL starts with /uploads
-        userData.profilePicture = userData.profilePicture.replace('/api/v1', '');
-      }
       setUser(userData);
       setError(null);
     } catch (err) {
@@ -58,10 +53,6 @@ export function AuthProvider({ children }) {
       const { token, user } = await authService.login(email, password);
       localStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Format the profile picture URL if it exists
-      if (user.profilePicture) {
-        user.profilePicture = user.profilePicture.replace('/api/v1', '');
-      }
       setUser(user);
       setError(null);
       return user;
@@ -101,10 +92,6 @@ export function AuthProvider({ children }) {
   const updateUser = async (userData) => {
     try {
       const updatedUser = await authService.updateProfile(userData);
-      // Format the profile picture URL if it exists
-      if (updatedUser.profilePicture) {
-        updatedUser.profilePicture = updatedUser.profilePicture.replace('/api/v1', '');
-      }
       setUser(updatedUser);
       setError(null);
       return updatedUser;
@@ -124,7 +111,7 @@ export function AuthProvider({ children }) {
         },
       });
       // Update the user state with the new profile picture
-      const updatedUser = { ...user, profilePicture: response.data.profilePicture.replace('/api/v1', '') };
+      const updatedUser = { ...user, profilePicture: response.data.profilePicture };
       setUser(updatedUser);
       setError(null);
       return response.data;

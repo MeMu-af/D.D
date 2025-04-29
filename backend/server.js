@@ -72,9 +72,8 @@ app.get('/api/v1/users/:id/profile-picture', authenticateToken, async (req, res)
       return res.status(404).json({ error: 'Profile picture not found' });
     }
 
-    // Extract the file path from the URL
-    const filePath = user.profilePicture.replace('/api/v1', '');
-    const imagePath = path.join(__dirname, '..', filePath);
+    // Use the stored path directly
+    const imagePath = path.join(__dirname, '..', user.profilePicture);
 
     if (!fs.existsSync(imagePath)) {
       return res.status(404).json({ error: 'Profile picture file not found' });
@@ -104,12 +103,10 @@ app.post('/api/v1/users/:id/profile-picture', authenticateToken, upload.single('
 
     // Update the user's profile picture in the database
     const profilePicturePath = `/uploads/images/${req.file.filename}`;
-    const fullProfilePictureUrl = `/api/v1${profilePicturePath}`;
-
     const updatedUser = await prismaClient.user.update({
       where: { id: userId },
       data: { 
-        profilePicture: fullProfilePictureUrl,
+        profilePicture: profilePicturePath,
         updatedAt: new Date()
       },
       select: { 
