@@ -20,6 +20,9 @@ router.put('/:id', userValidationRules.update, validate, userController.updateUs
 router.delete('/:id', userController.deleteUser);
 router.post('/:id/profile-picture', multer.single('profilePicture'), userController.updateProfilePicture);
 
+// Search route
+router.get('/search', userController.searchUsers);
+
 // Serve profile picture
 router.get('/:id/profile-picture', (req, res) => {
   const userId = req.params.id;

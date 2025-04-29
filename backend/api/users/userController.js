@@ -222,15 +222,19 @@ exports.updateProfilePicture = async (req, res) => {
 };
 
 exports.getNearbyUsers = async (req, res) => {
-    const { lat, lon, radius } = req.query;
-    if (!lat || !lon) {
-        return res.status(400).json({ error: 'Missing required parameters' });
-    }
-
     try {
-        const latitude = parseFloat(lat);
-        const longitude = parseFloat(lon);
-        const radiusKm = parseFloat(radius) || 10; // Default 10km radius
+        // Get the current user's location
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.user.userId },
+            select: {
+                latitude: true,
+                longitude: true
+            }
+        });
+
+        if (!currentUser || !currentUser.latitude || !currentUser.longitude) {
+            return res.status(400).json({ error: 'User location not set' });
+        }
 
         // Get all users with their locations
         const users = await prisma.user.findMany({
@@ -242,33 +246,33 @@ exports.getNearbyUsers = async (req, res) => {
             select: {
                 id: true,
                 username: true,
+                location: true,
                 latitude: true,
                 longitude: true,
-                profilePicture: true
+                profilePicture: true,
+                experience: true,
+                favoriteClasses: true
             }
         });
 
-        // Filter users within the specified radius
-        const nearbyUsers = users.filter(user => {
-            const distance = calculateDistance(
-                latitude,
-                longitude,
+        // Calculate distance for each user and convert to miles
+        const usersWithDistance = users.map(user => {
+            const distanceInKm = calculateDistance(
+                currentUser.latitude,
+                currentUser.longitude,
                 user.latitude,
                 user.longitude
             );
-            return distance <= radiusKm;
+            const distanceInMiles = distanceInKm * 0.621371; // Convert km to miles
+
+            return {
+                ...user,
+                distance: distanceInMiles
+            };
         });
 
-        // Add distance to each user
-        const usersWithDistance = nearbyUsers.map(user => ({
-            ...user,
-            distance: calculateDistance(
-                latitude,
-                longitude,
-                user.latitude,
-                user.longitude
-            )
-        }));
+        // Sort users by distance
+        usersWithDistance.sort((a, b) => a.distance - b.distance);
 
         res.json(usersWithDistance);
     } catch (error) {
@@ -303,4 +307,52 @@ exports.updateUserLocation = async (req, res) => {
         console.error('Error updating user location:', error);
         res.status(500).json({ error: 'Error updating user location', details: error.message });
     }
+};
+
+exports.searchUsers = async (req, res) => {
+  try {
+    const { query, location } = req.query;
+    
+    if (!query && !location) {
+      return res.status(400).json({ error: 'Search query or location is required' });
+    }
+
+    const searchConditions = {
+      where: {
+        AND: []
+      },
+      select: {
+        id: true,
+        username: true,
+        bio: true,
+        location: true,
+        experience: true,
+        favoriteClasses: true,
+        profilePicture: true,
+        interests: true
+      }
+    };
+
+    if (query) {
+      searchConditions.where.AND.push({
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { bio: { contains: query, mode: 'insensitive' } },
+          { interests: { hasSome: [query] } }
+        ]
+      });
+    }
+
+    if (location) {
+      searchConditions.where.AND.push({
+        location: { contains: location, mode: 'insensitive' }
+      });
+    }
+
+    const users = await prisma.user.findMany(searchConditions);
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Error searching users', details: error.message });
+  }
 };
