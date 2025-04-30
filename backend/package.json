@@ -9,8 +9,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "prisma generate && prisma migrate deploy",
-    "build:dev": "prisma generate",
+    "build": "yarn prisma:generate && yarn prisma:reset && yarn prisma:seed",
+    "build:dev": "yarn prisma:generate",
     "setup": "node setup.js",
     "test:jest": "jest --detectOpenHandles",
     "test:watch": "jest --watch",
