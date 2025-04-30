@@ -15,13 +15,13 @@ router.get('/:id', userController.getUserProfile);
 // Apply auth middleware to all routes below
 router.use(authenticateToken);
 
+// Protected routes
+router.get('/search', userController.searchUsers);
+
 // User profile management
 router.put('/:id', userValidationRules.update, validate, userController.updateUserProfile);
 router.delete('/:id', userController.deleteUser);
 router.post('/:id/profile-picture', multer.single('profilePicture'), userController.updateProfilePicture);
-
-// Search route
-router.get('/search', userController.searchUsers);
 
 // Serve profile picture
 router.get('/:id/profile-picture', (req, res) => {

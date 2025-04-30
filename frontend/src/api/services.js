@@ -6,12 +6,14 @@ export const authService = {
     const response = await api.post('/auth/login', { email, password });
     const { token, user } = response.data;
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem('token', token);
     return { token, user };
   },
   register: async (userData) => {
     const response = await api.post('/auth/register', userData);
     const { token, user } = response.data;
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem('token', token);
     return { token, user };
   },
   logout: () => {
@@ -95,7 +97,10 @@ export const postService = {
 export const userService = {
   getProfile: (userId) => api.get(`/users/${userId}`),
   updateProfile: (userId, data) => api.put(`/users/${userId}`, data),
-  searchUsers: (query) => api.get('/users/search', { params: query }),
+  searchUsers: async (query) => {
+    const response = await api.get('/users/search', { params: query });
+    return response.data;
+  },
   getProfilePicture: (userId) => api.get(`/users/${userId}/profile-picture`, {
     responseType: 'blob'
   }),

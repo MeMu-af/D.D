@@ -101,40 +101,62 @@ async function main() {
     try { await prisma.user.deleteMany(); } catch (e) {}
     console.log('Data cleared successfully');
 
+    // Define a set of states and their major cities for better test data
+    const stateCities = {
+      'CA': ['Los Angeles', 'San Francisco', 'San Diego', 'Sacramento'],
+      'NY': ['New York', 'Buffalo', 'Albany', 'Rochester'],
+      'TX': ['Houston', 'Dallas', 'Austin', 'San Antonio'],
+      'FL': ['Miami', 'Orlando', 'Tampa', 'Jacksonville'],
+      'IL': ['Chicago', 'Springfield', 'Peoria', 'Rockford'],
+      'PA': ['Philadelphia', 'Pittsburgh', 'Harrisburg', 'Allentown'],
+      'OH': ['Columbus', 'Cleveland', 'Cincinnati', 'Toledo'],
+      'GA': ['Atlanta', 'Savannah', 'Augusta', 'Macon'],
+      'NC': ['Charlotte', 'Raleigh', 'Greensboro', 'Durham'],
+      'MI': ['Detroit', 'Grand Rapids', 'Lansing', 'Ann Arbor']
+    };
+
     // Create test users
     console.log('Creating test users...');
     const users = [];
-    for (let i = 0; i < 5; i++) {
-      const hashedPassword = await bcrypt.hash('password123', 10);
-      const user = await prisma.user.create({
-        data: {
-          username: faker.internet.userName(),
-          email: faker.internet.email(),
-          password: hashedPassword,
-          firstName: faker.person.firstName(),
-          lastName: faker.person.lastName(),
-          bio: faker.lorem.sentence(),
-          city: faker.location.city(),
-          state: faker.helpers.arrayElement(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY']),
-          latitude: faker.location.latitude(),
-          longitude: faker.location.longitude(),
-          age: faker.number.int({ min: 18, max: 80 }),
-          experience: faker.helpers.arrayElement(['Beginner', 'Intermediate', 'Advanced', 'Veteran']),
-          favoriteClasses: faker.helpers.arrayElements([
-            'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk',
-            'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard'
-          ], { min: 1, max: 3 }),
-          profilePicture: mediaFiles.avatars[i % mediaFiles.avatars.length]
+    let userCount = 0;
+
+    // Create 3 users for each state-city combination
+    for (const [state, cities] of Object.entries(stateCities)) {
+      for (const city of cities) {
+        for (let i = 0; i < 3; i++) {
+          const hashedPassword = await bcrypt.hash('password123', 10);
+          const user = await prisma.user.create({
+            data: {
+              username: faker.internet.userName(),
+              email: faker.internet.email(),
+              password: hashedPassword,
+              firstName: faker.person.firstName(),
+              lastName: faker.person.lastName(),
+              bio: faker.lorem.sentence(),
+              city: city,
+              state: state,
+              latitude: faker.location.latitude(),
+              longitude: faker.location.longitude(),
+              age: faker.number.int({ min: 18, max: 80 }),
+              experience: faker.helpers.arrayElement(['Beginner', 'Intermediate', 'Advanced', 'Veteran']),
+              favoriteClasses: faker.helpers.arrayElements([
+                'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk',
+                'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard'
+              ], { min: 1, max: 3 }),
+              profilePicture: mediaFiles.avatars[userCount % mediaFiles.avatars.length]
+            }
+          });
+          users.push(user);
+          userCount++;
         }
-      });
-      users.push(user);
+      }
     }
-    console.log('Test users and posts created successfully');
+    console.log(`Created ${userCount} test users successfully`);
 
     // Create some messages between users
     console.log('Creating test messages...');
     const allUsers = await prisma.user.findMany();
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       const sender = faker.helpers.arrayElement(allUsers);
       const receiver = faker.helpers.arrayElement(allUsers.filter(u => u.id !== sender.id));
       

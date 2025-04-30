@@ -311,64 +311,12 @@ exports.updateUserLocation = async (req, res) => {
 
 exports.searchUsers = async (req, res) => {
   try {
-    const { query, city, state } = req.query;
-    
-    if (!query && !city && !state) {
-      return res.status(400).json({ error: 'Search query, city, or state is required' });
-    }
-
-    const searchConditions = {
-      where: {
-        AND: []
-      },
-      select: {
-        id: true,
-        username: true,
-        bio: true,
-        city: true,
-        state: true,
-        experience: true,
-        favoriteClasses: true,
-        profilePicture: true,
-        interests: true
-      }
-    };
-
-    if (query) {
-      searchConditions.where.AND.push({
-        OR: [
-          { username: { contains: query, mode: 'insensitive' } },
-          { bio: { contains: query, mode: 'insensitive' } },
-          { interests: { hasSome: [query] } }
-        ]
-      });
-    }
-
-    if (city) {
-      searchConditions.where.AND.push({
-        city: { contains: city, mode: 'insensitive' }
-      });
-    }
-
-    if (state) {
-      searchConditions.where.AND.push({
-        state: { equals: state, mode: 'insensitive' }
-      });
-    }
-
-    const users = await prisma.user.findMany(searchConditions);
-    
-    // Sort users by city and state alphabetically
-    const sortedUsers = users.sort((a, b) => {
-      if (a.state !== b.state) {
-        return a.state.localeCompare(b.state);
-      }
-      return a.city.localeCompare(b.city);
-    });
-
-    res.json(sortedUsers);
+    console.log('Search request query:', req.query);
+    const result = await userService.searchUsers(req.query);
+    console.log('Search result:', result);
+    res.json(result);
   } catch (error) {
     console.error('Error searching users:', error);
-    res.status(500).json({ error: 'Error searching users', details: error.message });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };

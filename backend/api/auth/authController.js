@@ -46,27 +46,9 @@ exports.login = async (req, res) => {
 
 exports.getCurrentUser = async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        bio: true,
-        city: true,
-        state: true,
-        experience: true,
-        profilePicture: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json(user);
+    // The user object is already attached by the auth middleware
+    // We just need to return it
+    res.json(req.user);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching user', details: error.message });
   }

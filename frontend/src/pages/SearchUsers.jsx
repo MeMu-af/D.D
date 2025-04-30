@@ -11,6 +11,7 @@ import {
   Link,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
+import { userService } from '../api/services';
 
 const US_STATES = [
   { name: 'Alabama', abbreviation: 'AL' },
@@ -67,35 +68,66 @@ const US_STATES = [
 
 function SearchUsers() {
   const [users, setUsers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const toast = useToast();
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    const loadAllUsers = async () => {
+      setLoading(true);
+      try {
+        console.log('Fetching users...');
+        const response = await userService.searchUsers();
+        console.log('API Response:', response);
+        
+        if (response && response.users) {
+          console.log('Users data:', response.users);
+          setUsers(response.users);
+        } else {
+          console.log('No users in response');
+          setUsers([]);
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError(err.message);
+        toast({
+          title: 'Error loading users',
+          description: err.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    try {
-      const queryParams = new URLSearchParams();
-      if (searchQuery) queryParams.append('query', searchQuery);
-      if (city) queryParams.append('city', city);
-      if (state) queryParams.append('state', state);
+    loadAllUsers();
+  }, [toast]);
 
-      const response = await fetch(`/api/users/search?${queryParams.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch users');
-      
-      const data = await response.json();
-      setUsers(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  // Group users by state and city
+  const groupedUsers = users.reduce((acc, user) => {
+    const state = user.state || 'Unknown State';
+    const city = user.city || 'Unknown City';
+    
+    if (!acc[state]) {
+      acc[state] = {};
     }
-  };
+    if (!acc[state][city]) {
+      acc[state][city] = [];
+    }
+    acc[state][city].push(user);
+    return acc;
+  }, {});
+
+  console.log('Grouped Users:', groupedUsers);
+
+  // Sort states and cities alphabetically
+  const sortedStates = Object.keys(groupedUsers).sort();
+  const sortedCitiesByState = {};
+  sortedStates.forEach(state => {
+    sortedCitiesByState[state] = Object.keys(groupedUsers[state]).sort();
+  });
 
   return (
     <Container maxW="container.md" py={8}>
@@ -103,44 +135,6 @@ function SearchUsers() {
         <Text fontSize="2xl" fontWeight="bold" color="dnd.parchment">
           Search Users
         </Text>
-
-        <form onSubmit={handleSearch} className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input
-              type="text"
-              placeholder="Search by username, bio, or interests"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="p-2 border rounded"
-            />
-            <input
-              type="text"
-              placeholder="City"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="p-2 border rounded"
-            />
-            <select
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              className="p-2 border rounded"
-            >
-              <option value="">Select State</option>
-              {US_STATES.map((state) => (
-                <option key={state.abbreviation} value={state.abbreviation}>
-                  {state.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            disabled={loading}
-          >
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-        </form>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
@@ -157,40 +151,56 @@ function SearchUsers() {
             <Text color="dnd.parchment">No users found.</Text>
           </Box>
         ) : (
-          <VStack spacing={4} align="stretch">
-            {users.map((user) => (
-              <Link
-                key={user.id}
-                as={RouterLink}
-                to={`/profile/${user.id}`}
-                _hover={{ textDecoration: 'none' }}
-              >
-                <Box
-                  p={4}
-                  bg="white"
-                  borderRadius="md"
-                  boxShadow="sm"
-                  _hover={{ transform: 'translateY(-2px)', transition: 'transform 0.2s' }}
-                >
-                  <HStack spacing={4}>
-                    <Avatar
-                      size="md"
-                      name={user.username}
-                      src={user.profilePicture}
-                      bg="dnd.gold"
-                      color="dnd.dungeonGray"
-                    />
-                    <VStack align="start" spacing={1} flex={1}>
-                      <Text fontWeight="bold" color="dnd.dungeonGray">
-                        {user.username}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        {user.city}, {user.state}
-                      </Text>
+          <VStack spacing={8} align="stretch">
+            {sortedStates.map((state) => (
+              <Box key={state}>
+                <Text fontSize="xl" fontWeight="bold" color="dnd.gold" mb={4}>
+                  {state}
+                </Text>
+                {sortedCitiesByState[state].map((city) => (
+                  <Box key={city} mb={6}>
+                    <Text fontSize="lg" fontWeight="semibold" color="dnd.dungeonGray" mb={2}>
+                      {city}
+                    </Text>
+                    <VStack spacing={4} align="stretch">
+                      {groupedUsers[state][city].map((user) => (
+                        <Link
+                          key={user.id}
+                          as={RouterLink}
+                          to={`/profile/${user.id}`}
+                          _hover={{ textDecoration: 'none' }}
+                        >
+                          <Box
+                            p={4}
+                            bg="white"
+                            borderRadius="md"
+                            boxShadow="sm"
+                            _hover={{ transform: 'translateY(-2px)', transition: 'transform 0.2s' }}
+                          >
+                            <HStack spacing={4}>
+                              <Avatar
+                                size="md"
+                                name={user.username}
+                                src={user.profilePicture}
+                                bg="dnd.gold"
+                                color="dnd.dungeonGray"
+                              />
+                              <VStack align="start" spacing={1} flex={1}>
+                                <Text fontWeight="bold" color="dnd.dungeonGray">
+                                  {user.username}
+                                </Text>
+                                <Text fontSize="sm" color="gray.600">
+                                  {user.bio || 'No bio available'}
+                                </Text>
+                              </VStack>
+                            </HStack>
+                          </Box>
+                        </Link>
+                      ))}
                     </VStack>
-                  </HStack>
-                </Box>
-              </Link>
+                  </Box>
+                ))}
+              </Box>
             ))}
           </VStack>
         )}

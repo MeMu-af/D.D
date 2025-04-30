@@ -1,7 +1,7 @@
 const prisma = require('../../prisma');
 
 const getUserById = async (userId) => {
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findMany({
     where: { id: userId },
     select: {
       id: true,
@@ -11,7 +11,6 @@ const getUserById = async (userId) => {
       lastName: true,
       profilePicture: true,
       bio: true,
-      location: true,
       latitude: true,
       longitude: true,
       age: true,
@@ -161,9 +160,52 @@ const formatUserProfilePicture = (user) => {
   return user;
 };
 
+const searchUsers = async (params = {}) => {
+  console.log('Fetching all users...');
+  
+  // Get total count
+  const total = await prisma.user.count();
+  console.log('Total users found:', total);
+
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      bio: true,
+      location: true,
+      state: true,
+      city: true,
+      experience: true,
+      profilePicture: true,
+      createdAt: true
+    },
+    orderBy: [
+      { state: 'asc' },
+      { city: 'asc' }
+    ]
+  });
+
+  console.log('Found users:', users);
+
+  // Format profile pictures
+  const formattedUsers = users.map(user => formatUserProfilePicture(user));
+
+  return {
+    users: formattedUsers,
+    pagination: {
+      total,
+      page: 1,
+      limit: total,
+      totalPages: 1
+    }
+  };
+};
+
 module.exports = {
   getUserById,
   updateUser,
   deleteUser,
-  getUserPosts
+  getUserPosts,
+  searchUsers
 }; 

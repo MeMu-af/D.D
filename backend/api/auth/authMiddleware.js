@@ -52,30 +52,38 @@ const errorResponses = {
 const authMiddleware = (roles = []) => {
   return async (req, res, next) => {
     try {
-      const authHeader = req.headers['authorization'];
-      const token = authHeader && authHeader.split(' ')[1];
+      // Get token from Authorization header
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).json(errorResponses.noToken);
+      }
 
+      // Extract token from "Bearer <token>"
+      const token = authHeader.split(' ')[1];
       if (!token) {
         return res.status(401).json(errorResponses.noToken);
       }
 
+      // Verify token and get user
       const user = await verifyToken(token);
-      
-      // Check if user has required role
+      if (!user) {
+        return res.status(401).json(errorResponses.invalidToken);
+      }
+
+      // Check if user has required roles
       if (roles.length > 0 && !roles.includes(user.role)) {
         return res.status(403).json(errorResponses.insufficientPermissions);
       }
 
+      // Attach user to request object
       req.user = user;
       next();
     } catch (error) {
+      console.error('Auth middleware error:', error);
       if (error.message === 'Token expired') {
         return res.status(401).json(errorResponses.tokenExpired);
       }
-      if (error.message === 'User not found') {
-        return res.status(404).json(errorResponses.userNotFound);
-      }
-      return res.status(403).json(errorResponses.invalidToken);
+      return res.status(401).json(errorResponses.invalidToken);
     }
   };
 };
