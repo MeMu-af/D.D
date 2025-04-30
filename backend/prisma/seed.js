@@ -86,19 +86,46 @@ async function setupMediaFiles() {
 
 async function main() {
   try {
-    // Setup media files
-    console.log('Setting up media files...');
-    const mediaFiles = await setupMediaFiles();
-    console.log('Media files setup complete');
+    console.log('Starting seed process...');
 
     // Try to clear existing data in the correct order to respect foreign key constraints
     console.log('Clearing existing data...');
-    try { await prisma.postLike.deleteMany(); } catch (e) {}
-    try { await prisma.rating.deleteMany(); } catch (e) {}
-    try { await prisma.comment.deleteMany(); } catch (e) {}
-    try { await prisma.message.deleteMany(); } catch (e) {}
-    try { await prisma.post.deleteMany(); } catch (e) {}
-    try { await prisma.user.deleteMany(); } catch (e) {}
+    try { 
+      await prisma.postLike.deleteMany(); 
+      console.log('Post likes cleared');
+    } catch (e) {
+      console.log('Error clearing post likes:', e.message);
+    }
+    try { 
+      await prisma.rating.deleteMany(); 
+      console.log('Ratings cleared');
+    } catch (e) {
+      console.log('Error clearing ratings:', e.message);
+    }
+    try { 
+      await prisma.comment.deleteMany(); 
+      console.log('Comments cleared');
+    } catch (e) {
+      console.log('Error clearing comments:', e.message);
+    }
+    try { 
+      await prisma.message.deleteMany(); 
+      console.log('Messages cleared');
+    } catch (e) {
+      console.log('Error clearing messages:', e.message);
+    }
+    try { 
+      await prisma.post.deleteMany(); 
+      console.log('Posts cleared');
+    } catch (e) {
+      console.log('Error clearing posts:', e.message);
+    }
+    try { 
+      await prisma.user.deleteMany(); 
+      console.log('Users cleared');
+    } catch (e) {
+      console.log('Error clearing users:', e.message);
+    }
     console.log('Data cleared successfully');
 
     // Define a set of states and their major cities for better test data
@@ -127,7 +154,7 @@ async function main() {
           const hashedPassword = await bcrypt.hash('password123', 10);
           const user = await prisma.user.create({
             data: {
-              username: faker.internet.userName(),
+              username: faker.internet.username(),
               email: faker.internet.email(),
               password: hashedPassword,
               firstName: faker.person.firstName(),
@@ -143,7 +170,7 @@ async function main() {
                 'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk',
                 'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard'
               ], { min: 1, max: 3 }),
-              profilePicture: mediaFiles.avatars[userCount % mediaFiles.avatars.length]
+              profilePicture: TEST_MEDIA.avatars[userCount % TEST_MEDIA.avatars.length]
             }
           });
           users.push(user);
