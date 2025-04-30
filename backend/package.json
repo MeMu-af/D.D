@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "prisma generate",
+    "build": "prisma generate && prisma migrate deploy",
     "build:dev": "prisma generate",
     "setup": "node setup.js",
     "test:jest": "jest --detectOpenHandles",
