@@ -10,7 +10,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "yarn prisma:generate && yarn prisma:migrate deploy",
-    "build:dev": "yarn prisma:generate",
+    "build:dev": "yarn prisma:generate && yarn prisma:migrate dev",
     "setup": "node setup.js",
     "test:jest": "jest --detectOpenHandles",
     "test:watch": "jest --watch",
