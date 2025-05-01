@@ -9,6 +9,7 @@ import {
   useToast,
   Spinner,
   Link,
+  Button,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { userService } from '../api/services';
@@ -127,7 +128,24 @@ function SearchUsers() {
   const sortedCitiesByState = {};
   sortedStates.forEach(state => {
     sortedCitiesByState[state] = Object.keys(groupedUsers[state]).sort();
+    // Also sort users within each city alphabetically
+    sortedCitiesByState[state].forEach(city => {
+      groupedUsers[state][city].sort((a, b) => a.username.localeCompare(b.username));
+    });
   });
+
+  // Placeholder function for the message button click
+  const handleSendMessage = (userId, username) => {
+    console.log(`Initiate message to user ID: ${userId}, Username: ${username}`);
+    // TODO: Implement actual navigation or modal logic for messaging
+    toast({
+      title: 'Messaging not implemented',
+      description: `Would message ${username}`,
+      status: 'info',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
   return (
     <Container maxW="container.md" py={8}>
@@ -164,18 +182,23 @@ function SearchUsers() {
                     </Text>
                     <VStack spacing={4} align="stretch">
                       {groupedUsers[state][city].map((user) => (
-                        <Link
+                        // Wrap User info and Button in an HStack
+                        <HStack
                           key={user.id}
-                          as={RouterLink}
-                          to={`/profile/${user.id}`}
-                          _hover={{ textDecoration: 'none' }}
+                          p={4}
+                          bg="white"
+                          borderRadius="md"
+                          boxShadow="sm"
+                          _hover={{ transform: 'translateY(-2px)', transition: 'transform 0.2s' }}
+                          justifyContent="space-between" // Align items
+                          alignItems="center"
                         >
-                          <Box
-                            p={4}
-                            bg="white"
-                            borderRadius="md"
-                            boxShadow="sm"
-                            _hover={{ transform: 'translateY(-2px)', transition: 'transform 0.2s' }}
+                          {/* Link wrapping user info */}
+                          <Link
+                            as={RouterLink}
+                            to={`/profile/${user.id}`}
+                            _hover={{ textDecoration: 'none' }}
+                            flex={1} // Allow link area to grow
                           >
                             <HStack spacing={4}>
                               <Avatar
@@ -185,7 +208,7 @@ function SearchUsers() {
                                 bg="dnd.gold"
                                 color="dnd.dungeonGray"
                               />
-                              <VStack align="start" spacing={1} flex={1}>
+                              <VStack align="start" spacing={1}>
                                 <Text fontWeight="bold" color="dnd.dungeonGray">
                                   {user.username}
                                 </Text>
@@ -194,8 +217,21 @@ function SearchUsers() {
                                 </Text>
                               </VStack>
                             </HStack>
-                          </Box>
-                        </Link>
+                          </Link>
+
+                          {/* Message Button */}
+                          <Button
+                            size="sm"
+                            colorScheme="blue" // Choose a color scheme
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent link navigation if inside Link
+                              e.stopPropagation(); // Prevent event bubbling
+                              handleSendMessage(user.id, user.username);
+                            }}
+                          >
+                            Message
+                          </Button>
+                        </HStack>
                       ))}
                     </VStack>
                   </Box>
