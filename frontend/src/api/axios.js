@@ -1,8 +1,13 @@
 import axios from 'axios';
+// import.meta.env.VITE_API_URL;???
+
+// Determine the base URL based on the environment
+const baseURL = import.meta.env.VITE_API_URL || '/api/v1'; // Use env variable, fallback for safety/other setups
+console.log(`API Base URL: ${baseURL}`); // Log the base URL being used
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: baseURL, // Use the determined baseURL
   headers: {
     'Content-Type': 'application/json',
   },
