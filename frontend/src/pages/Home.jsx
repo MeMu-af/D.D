@@ -34,7 +34,7 @@ function Home() {
                 color="dnd.parchment"
                 maxW="2xl"
               >
-                Find fellow adventurers in your area and bring your campaigns to life! Upload highlights reels and pictures of your campaigns, art, collections, and more in our forum for everything D&D!  Virtual play coming soon...
+                Find fellow adventurers in your area and bring your campaigns to life! Upload highlight reels and pictures of your campaigns, art, collections, and more in our forum for everything D&D!  Virtual play coming soon...
               </Text>
             </VStack>
           </CardBody>
